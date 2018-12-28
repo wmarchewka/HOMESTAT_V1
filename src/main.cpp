@@ -1017,7 +1017,7 @@ void TimeRoutine()
     time_t tmpNow;
 
     if (firstRun) 
-      Serial.println(F("  Firstrun waiting for time from time sync"));
+    
 
     configTime(-4 * 3600, 0, "pool.ntp.org");
     
@@ -1045,13 +1045,15 @@ void TimeRoutine()
         if (tmpNow != 0)
         {
           if (firstRun){
-            glb_BootTime = glb_TimeLong;
-            String tmp = (F("Boot time:"));
+            Serial.println(F("  First run waiting for time from time sync..."));
+            firstRun = false;
+            now = tmpNow;
+            glb_BootTime = ctime(&now);
+            String tmp = (F("Boot time : "));
             FileSystem_ErrorLogSave(tmp + glb_BootTime);
-            Serial.print(F("  Boot time:"));
-            Serial.println(glb_BootTime);
+            Serial.print(F("  Boot time : "));
+            Serial.print(glb_BootTime);
           }
-          firstRun = false;
           secondsCounter = 0;
           now = tmpNow;
           Serial.print("  Got time from timeserver : ");
@@ -2273,13 +2275,13 @@ void WebServer_HandleNotFound()
 //************************************************************************************
 void setup()
 {
-  Serial.println("ROUTINE_setup");
   //SET UP AS CONTROLLER OR SENSOR
   glb_tempController = true;
   Serial.begin(115200);
+  Serial.println("ROUTINE_setup");
   Serial.println();
   delay(1000);
-  Serial.print(F("Free RAM "));
+  Serial.print(F("  Free RAM : "));
   glb_freeHeap = ESP.getFreeHeap();
   Serial.println(glb_freeHeap);
   //FileSystem_Format();
@@ -2323,7 +2325,7 @@ void setup()
   StartupPrinting_Setup();
   Tasks_Enable_Setup();
   mDNS_Setup();
-  Debug.println(F("Starting..."));
+  Serial.println(F(" Starting..."));
 }
 //************************************************************************************
 void ThermostatMode_Setup()
@@ -2410,8 +2412,7 @@ void StartupPrinting_Setup()
 {
   Serial.println(F("ROUTINE_StartupPrinting_Setup"));
 
-  Reset_Reason();
-  Serial.print(F("  MAC: "));
+  Serial.print(F("  MAC : "));
   Serial.println(WiFi.macAddress());
   Serial.print(F("  Version : "));
   Serial.println(TimestampedVersion);
@@ -2438,6 +2439,7 @@ void StartupPrinting_Setup()
   //Serial.print(F("Savecrash count:"));
   //int tmpCount = SaveCrash.count();
   //ErrorLogData_Save("Savecrash count:" + String(tmpCount));
+  Reset_Reason();
   ChipID_Acquire();
 
   int getBD = BootDevice_Detect();
@@ -2547,11 +2549,11 @@ void FileSystem_SystemLogCreate()
 {
   bool debug = 0;
 
-  Serial.print(F("ROUTINE_FileSystem_SystemLogCreate"));
+  Serial.println(F("ROUTINE_FileSystem_SystemLogCreate"));
 
   if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
   {
-    Serial.print(F("File system already mounted:"));
+    Serial.println(F("  File system already mounted..."));
   }
   else
   {
@@ -2560,15 +2562,15 @@ void FileSystem_SystemLogCreate()
 
   if (SPIFFS.exists(glb_systemLogPath))
   {
-    Serial.print(F("File exists:"));
+    Serial.println(F("  File exists..."));
     File f = SPIFFS.open(glb_systemLogPath, "r");
-    Serial.print(F("File size is:"));
+    Serial.print(F("  File size is :"));
     Serial.println(f.size());
     f.close();
   }
   else
   {
-    Serial.println(F("File not found error..."));
+    Serial.println(F("  File not found error..."));
     File f = SPIFFS.open(glb_systemLogPath, "w");
     f.close();
   }
@@ -2578,24 +2580,24 @@ void FileSystem_DebugLogCreate()
 {
   bool debug = 0;
 
-  Serial.print(F("ROUTINE_FileSystem_DebugLogCreate"));
+  Serial.println(F("ROUTINE_FileSystem_DebugLogCreate"));
 
   if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
   {
-    Serial.print(F("File system mounted:"));
+    Serial.println(F("  File system mounted..."));
   }
 
   if (SPIFFS.exists(glb_debugLogPath))
   {
-    Serial.print(F("File exists:"));
+    Serial.println(F("  File exists..."));
     File f = SPIFFS.open(glb_debugLogPath, "r");
-    Serial.print(F("File size is:"));
+    Serial.print(F("  File size is : "));
     Serial.println(f.size());
     f.close();
   }
   else
   {
-    Serial.println(F("File not found error..."));
+    Serial.println(F("  File not found error..."));
     File f = SPIFFS.open(glb_debugLogPath, "w");
     f.close();
   }
@@ -2605,24 +2607,24 @@ void FileSystem_DataLogCreate()
 {
   bool debug = 1;
 
-  Serial.print(F("ROUTINE_FileSystem_DataLogCreate"));
+  Serial.println(F("ROUTINE_FileSystem_DataLogCreate"));
 
   if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
   {
-    Serial.print(F("File system mounted:"));
+    Serial.println(F("  File system mounted:..."));
   }
 
   if (SPIFFS.exists(glb_dataLogPath))
   {
-    Serial.print(F("File exists:"));
+    Serial.println(F("  File exists..."));
     File f = SPIFFS.open(glb_dataLogPath, "r");
-    Serial.print(F("File size is:"));
+    Serial.print(F("  File size is : "));
     Serial.println(f.size());
     f.close();
   }
   else
   {
-    Serial.println(F("File not found error..."));
+    Serial.println(F("  File not found error..."));
     File f = SPIFFS.open(glb_dataLogPath, "w");
     f.close();
   }
@@ -2876,7 +2878,7 @@ void Tasks_Enable_Setup()
   }
   if (taskBlynkUpdate_22.isEnabled())
   {
-    Serial.println(F( "Enabling task taskBlynkUpdate_22..."));
+    Serial.println(F("  Enabling task taskBlynkUpdate_22..."));
     taskBlynkUpdate_22.setId(21);
   }
 }
@@ -2931,7 +2933,7 @@ void ChipID_Acquire()
 {
   Serial.println("ROUTINE_ChipID_Acquire");
   chipid = ESP.getEfuseMac();                                      //The chip ID is essentially its MAC address(length: 6 bytes).
-  Serial.printf(" ESP32 Chip ID = %04X", (uint16_t)(chipid >> 32)); //print High 2 bytes
+  Serial.printf("  ESP32 Chip ID = %04X", (uint16_t)(chipid >> 32)); //print High 2 bytes
   Serial.printf("%08X\n", (uint32_t)chipid);                       //print Low 4bytes.
 }
 //************************************************************************************
@@ -2986,7 +2988,7 @@ void WebServer_Setup()
 {
 
   Serial.println(F("ROUTINE_WebServer_Setup"));
-  Serial.println(F("  HTTP server started"));
+  Serial.println(F("  HTTP server started..."));
 
   webServer.on((F("/upload")), HTTP_POST, []() {
     webServer.send(200, (F("text/plain")), "");
@@ -3009,22 +3011,22 @@ void WebServer_Setup()
 //************************************************************************************
 void FileSystem_ErrorLogCreate()
 {
-  Serial.println("ROUTINE_ErrorLog_Create");
+  Serial.println("ROUTINE_FileSystem_ErrorLog_Create");
   bool debug = 1;
   
   if (debug)
-    Serial.println(F("  Creating ErrorLog:"));
+    Serial.println(F("  Creating ErrorLog..."));
 
   if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
   {
-    Serial.println(F("  File system mounted:"));
+    Serial.println(F("  File system mounted..."));
   }
 
   if (SPIFFS.exists(glb_errorLogPath))
   {
-    Serial.println(F("  File exists:"));
+    Serial.println(F("  File exists..."));
     File f = SPIFFS.open(glb_errorLogPath, "r");
-    Serial.print(F("  File size is:"));
+    Serial.print(F("  File size is : "));
     Serial.println(f.size());
     f.close();
   }
@@ -3032,7 +3034,7 @@ void FileSystem_ErrorLogCreate()
   {
     Serial.println(F("  File not found error..."));
     File f = SPIFFS.open(glb_errorLogPath, "w");
-    Serial.print(F("  File created  "));
+    Serial.print(F("  File created : "));
     Serial.println(glb_errorLogPath);
     f.close();
   }
@@ -3090,16 +3092,16 @@ void Reset_Reason()
   EEPROM.write(ES_RESETCOUNTER, glb_resetCounter);
   EEPROM.commit();
   mb.Hreg(ESP_RESET_COUNTER_MB_HREG, (word)glb_resetCounter);
-  String tmp = (F("Reset counter:"));
+  String tmp = (F("Reset counter : "));
   FileSystem_ErrorLogSave(String(tmp + glb_resetCounter));
-  Serial.print(F("  Reset counter:"));
+  Serial.print(F("  Reset counter : "));
   Serial.println(glb_resetCounter);
 }
 //************************************************************************************
 //gets called when WiFiManager enters configuration mode
 void configModeCallback(WiFiManager *myWiFiManager)
 {
-  Serial.println("Entered config mode");
+  Serial.println("  Entered config mode");
   Serial.println(WiFi.softAPIP());
   //if you used auto generated SSID, print it
   Serial.println(myWiFiManager->getConfigPortalSSID());
@@ -3114,13 +3116,13 @@ void WiFiManager_Setup()
   wifiManager.autoConnect("HOMESTAT");
   wifiManager.setConfigPortalTimeout(60);
   glb_ipAddress = WiFi.localIP();
-  Serial.print(F(" IP address: "));
+  Serial.print(F(" IP address : "));
   Serial.println(WiFi.localIP());
   wifiManager.getPassword().toCharArray(glb_SSIDpassword, 32);
   wifiManager.getSSID().toCharArray(glb_SSID, 32);
-  Serial.print(F("  SSID:"));
+  Serial.print(F("  SSID : "));
   Serial.println(glb_SSID);
-  Serial.print(F("  SSID password:"));
+  Serial.print(F("  SSID password : "));
   Serial.println(glb_SSIDpassword);
   Wifi_CheckStatus();
 }
