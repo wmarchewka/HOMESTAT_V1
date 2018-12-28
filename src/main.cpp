@@ -537,6 +537,11 @@ void TelnetServer_ProcessCommand()
     Debug.println(f.size());
     f.close();
   }
+  else if (lastCmd.startsWith("reboot"))
+  {
+    Debug.println("Rebooting...");
+    ESP_Restart();
+  }
   else if (lastCmd.startsWith("errorlog delete"))
   {
     FileSystem_DeleteFile(glb_errorLogPath);
@@ -632,6 +637,7 @@ void TelnetServer_ProcessCommand()
     Debug.println(F("set mcp pin xx y"));
     Debug.println(F("task times"));
     Debug.println(F("debugdata save"));
+    Debug.println(F("reboot"));
   }
 }
 //************************************************************************************
