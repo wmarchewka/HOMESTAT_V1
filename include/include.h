@@ -172,11 +172,13 @@ bool glb_coolcall = false;
 bool glb_fancall = false;
 bool glb_tempController = false;
 const char *glb_mdnsName = "HOMESTAT";
-char blynkAuth[] = "377795d87a0549d09b18572fe8d80dd6"; // for home blynk server
-char blynkServer[] = "10.0.0.11";
-unsigned int blynkPort = 8080;
+//char blynkAuth[] = "377795d87a0549d09b18572fe8d80dd6"; // for home blynk server
+//char blynkServer[] = "10.0.0.11";
+//unsigned int blynkPort = 8080;
 float glb_VCC = 0.0;
 uint64_t chipid;
+const char* mqtt_server = "10.0.0.26";
+
 
 //function declarations
 void print_reset_reason(RESET_REASON);
@@ -258,9 +260,11 @@ void FileSystem_SystemDataSave(String);
 void FileSystem_SystemLogCreate();
 void ThingSpeak_Setup();
 void ThermostatMode_Setup();
-void blynkSetup();
-void blynkRun();
-void blynkUpdate();
+void MQTT_Setup();
+void MQTT_RunLoop();
+void MQTT_Publish();
+void MQTT_Reconnect();
+void MQTT_Callback(char *, byte *, unsigned int );
 void testVCC();
 String WebServer_getPage();
 #endif

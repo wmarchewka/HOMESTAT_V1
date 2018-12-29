@@ -12,8 +12,6 @@
 #include "Adafruit_MCP23017.h"
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-#include "ArduinoTrace.h"
-//#include <BlynkSimpleEsp8266.h>
 #include "build_defs.h"
 #include <DHT.h>
 #include "DNSServer.h"
@@ -27,6 +25,7 @@
 #include <lwip/netdb.h>
 #include <Modbus.h>
 #include "ModbusIP_ESP8266.h"
+#include <PubSubClient.h>
 #include <RemoteDebug.h>
 #include <rom/rtc.h>
 #include "sensitive.h"
@@ -51,6 +50,8 @@ WebServer webServer(HTTP_WEBSERVER_PORT);       //webserver
 WebServer DataServer(DATASERVER_PORT);          //wifi server
 RemoteDebug Debug;                               //telnet debug
 WiFiManager wifiManager;                         //wifi manager
+WiFiClient espClient;                             // wifi client for use withMQTT 
+PubSubClient MQTT_Client(espClient);             // MQTT client
 
 Task taskModbusReadData_1(30, TASK_FOREVER, &Modbus_ReadData, NULL);
 Task taskDHT11Temp_2(2000, TASK_FOREVER, &DHT11_TempHumidity, NULL);
@@ -72,8 +73,8 @@ Task taskModbusClientSend_17(5000, TASK_FOREVER, &Modbus_Client_Send, NULL);
 Task taskOTA_Update_18(100, TASK_FOREVER, &OTA_Update, NULL);
 Task taskLogDataSave_19(60000, TASK_FOREVER, &FileSystem_DataLogSave, NULL);
 Task taskLCDUpdate_20(1000, TASK_FOREVER, &LCD_Update, NULL);
-Task taskBlynkRun_21(50, TASK_FOREVER, &blynkRun, NULL);
-Task taskBlynkUpdate_22(1000, TASK_FOREVER, &blynkUpdate, NULL);
+Task taskMQTTRUN_21(50, TASK_FOREVER, &MQTT_RunLoop, NULL);
+Task taskMQTTUpdate_22(1000, TASK_FOREVER, &MQTT_Publish, NULL);
 //************************************************************************************
 void testVCC()
 {
@@ -85,36 +86,94 @@ void testVCC()
   Serial.println(glb_VCC);
   pinMode(TEST_PIN, INPUT);
 }
-
 //************************************************************************************
-void blynkUpdate()
+void MQTT_RunLoop()
 {
-  Serial.println(F("ROUTINE_blynkUpdate"));
-  bool debug = 0;
-  if (debug)
-    Serial.println("Sending values to Blynk server...");
-  //Blynk.virtualWrite(V0, glb_temperature);
-  //Blynk.virtualWrite(V1, glb_humidity);
-  //Blynk.virtualWrite(V2, glb_lightSensor);
-  //Blynk.virtualWrite(V3, glb_thermostatStatus);
-  //Blynk.virtualWrite(V4, glb_lightSensor);
-  //v5 is sleep status
-  //Blynk.virtualWrite(V6, TimestampedVersion);
-
-  if (debug)
-    Serial.println(glb_thermostatStatus);
+  MQTT_Client.loop();
 }
 //************************************************************************************
-void blynkSetup()
+void MQTT_Publish()
 {
-  Serial.println("Setting up Blynk server...");
-  //Blynk.config(blynkAuth, blynkServer, blynkPort);
-  //Blynk.connect();
+  Serial.println(F("ROUTINE_MQTT_Publish"));
+  
+  char msg[50];
+  String message = "WALT";
+  glb_TimeLong.toCharArray(msg ,50);
+  bool debug = 1;
+  if (debug) Serial.println(" Sending values to MQTT server...");
+  if (!MQTT_Client.connected()){
+    Serial.println("  MQTT reconnecting");
+    MQTT_Reconnect();
+  }
+  else {
+    MQTT_Client.publish("outTopic", msg);
+  }
 }
 //************************************************************************************
-void blynkRun()
+void MQTT_Setup()
 {
-  //Blynk.run();
+  Serial.println(F("ROUTINE_MQTT_Setup"));
+
+  Serial.println("  Setting up MQTT client...");
+  MQTT_Client.setServer(mqtt_server, 1883);
+  MQTT_Client.setCallback(MQTT_Callback); 
+}
+//************************************************************************************
+void MQTT_Reconnect()
+{
+  Serial.println(F("ROUTINE_MQTT_Reconnect"));
+  
+  // Loop until we're reconnected
+  //while (!MQTT_Client.connected())
+  //{
+    Serial.println("  Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (MQTT_Client.connect(clientId.c_str()))
+    {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      MQTT_Client.publish("outTopic", "hello world");
+      // ... and resubscribe
+      MQTT_Client.subscribe("inTopic");
+    }
+    else
+    {
+     Serial.print("failed, rc = ");
+     Serial.println(MQTT_Client.state());
+     //Serial.println(" try again in 5 seconds");
+     // Wait 5 seconds before retrying
+     //delay(5000);
+    }
+  //}
+}
+//************************************************************************************
+void MQTT_Callback(char *topic, byte *payload, unsigned int length)
+{
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+
+  // Switch on the LED if an 1 was received as first character
+  if ((char)payload[0] == '1')
+  {
+    //digitalWrite(BUILTIN_LED, LOW); // Turn the LED on (Note that LOW is the voltage level
+    // but actually the LED is on; this is because
+    // it is active low on the ESP-01)
+    Serial.println("************************************Received 1 from MQTT");
+  }
+  else
+  {
+    //digitalWrite(BUILTIN_LED, HIGH); // Turn the LED off by making the voltage HIGH
+    Serial.println("************************************Received 0 from MQTT");
+  }
 }
 //************************************************************************************
 void LCD_Update()
@@ -2317,7 +2376,7 @@ void setup()
   if (glb_tempController)
     Thermostat_ControlDisable();
   TaskScheduler_Setup();
-  ThingSpeak_Setup();
+  MQTT_Setup();
   if (glb_tempController)
     DataServer_Setup();
   if (glb_tempController)
@@ -2342,11 +2401,6 @@ void ThermostatMode_Setup()
     Serial.println(F("  Booting ESP8266 as Temperature sensor"));
     FileSystem_ErrorLogSave(F("   Booting ESP8266  as Temperature sensor"));
   }
-}
-//************************************************************************************
-void ThingSpeak_Setup()
-{
-  Serial.println(F("ROUTINE_ThingSpeak_Setup"));
 }
 //************************************************************************************
 void mDNS_Setup()
@@ -2750,8 +2804,8 @@ void Tasks_Enable_Setup()
   taskOTA_Update_18.enable();
   taskLogDataSave_19.enable();
   taskLCDUpdate_20.enable();
-  taskBlynkRun_21.enable();
-  taskBlynkUpdate_22.enable();
+  taskMQTTRUN_21.enable();
+  taskMQTTUpdate_22.enable();
 
   if (taskModbusReadData_1.isEnabled())
   {
@@ -2871,15 +2925,15 @@ void Tasks_Enable_Setup()
     Serial.println(F("  Enabling task taskLCDUpdate_20..."));
     taskLCDUpdate_20.setId(20);
   }
-  if (taskBlynkRun_21.isEnabled())
+  if (taskMQTTRUN_21.isEnabled())
   {
-    Serial.println(F("  Enabling task taskBlynkRun_21..."));
-    taskBlynkRun_21.setId(21);
+    Serial.println(F("  Enabling task taskMQTTRUN_21..."));
+    taskMQTTRUN_21.setId(21);
   }
-  if (taskBlynkUpdate_22.isEnabled())
+  if (taskMQTTUpdate_22.isEnabled())
   {
-    Serial.println(F("  Enabling task taskBlynkUpdate_22..."));
-    taskBlynkUpdate_22.setId(21);
+    Serial.println(F("  Enabling task taskMQTTUpdate_22..."));
+    taskMQTTUpdate_22.setId(21);
   }
 }
 //************************************************************************************
@@ -2924,17 +2978,25 @@ void TaskScheduler_Setup()
     runner.addTask(taskLogDataSave_19);
   if (glb_tempController)
     runner.addTask(taskLCDUpdate_20);
-  runner.addTask(taskBlynkRun_21);
-  runner.addTask(taskBlynkUpdate_22);
+  runner.addTask(taskMQTTRUN_21);
+  runner.addTask(taskMQTTUpdate_22);
 }
 
 //************************************************************************************
 void ChipID_Acquire()
 {
+  char glbChipID[12];
+  char glbChipID1[20];
+
   Serial.println("ROUTINE_ChipID_Acquire");
   chipid = ESP.getEfuseMac();                                      //The chip ID is essentially its MAC address(length: 6 bytes).
   Serial.printf("  ESP32 Chip ID = %04X", (uint16_t)(chipid >> 32)); //print High 2 bytes
   Serial.printf("%08X\n", (uint32_t)chipid);                       //print Low 4bytes.
+  //sprintf(glbChipID, "%12X", (uint64_t)(chipid >> 48));
+  //sprintf(glbChipID1,"%08X\n", (uint32_t)chipid);
+  //Serial.print("string chipid : ");
+  //Serial.print(glbChipID);
+  //Serial.print(glbChipID1);
 }
 //************************************************************************************
 void EEPROM_Erase()
@@ -2977,7 +3039,7 @@ void TelnetServer_Setup()
 {
   Serial.println(F("ROUTINE_TelnetServer_Setup"));
 
-  Debug.begin("statbasement", 1);                             // Initiaze the telnet server - HOST_NAME is the
+  Debug.begin("statbasement", 21, 1);                             // Initiaze the telnet server - HOST_NAME is the
                                                               //used in MDNS.begin and set the initial Serial level
   Debug.setSerialEnabled(false);                              // All messages too send to serial too, and can be see
   Debug.setResetCmdEnabled(true);                             // Setup after Serial.begin

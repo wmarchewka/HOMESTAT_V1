@@ -6,5 +6,6 @@
     "search.showLineNumbers": true,
     "files.associations": {
         "sntp.h": "c"
-    }
+    },
+    "C_Cpp.intelliSenseEngineFallback": "Disabled"
 }
