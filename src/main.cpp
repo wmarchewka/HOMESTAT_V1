@@ -2978,8 +2978,8 @@ void TaskScheduler_Setup()
     runner.addTask(taskLogDataSave_19);
   if (glb_tempController)
     runner.addTask(taskLCDUpdate_20);
-  runner.addTask(taskMQTTRUN_21);
-  runner.addTask(taskMQTTUpdate_22);
+  //runner.addTask(taskMQTTRUN_21);
+  //runner.addTask(taskMQTTUpdate_22);
 }
 
 //************************************************************************************
