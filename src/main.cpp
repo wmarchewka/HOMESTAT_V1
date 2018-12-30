@@ -10,6 +10,7 @@
 
 #include "include.h"
 #include "Adafruit_MCP23017.h"
+#include "Adafruit_GFX.h"
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include "build_defs.h"
@@ -28,23 +29,23 @@
 #include <PubSubClient.h>
 #include <RemoteDebug.h>
 #include <rom/rtc.h>
-#include "sensitive.h"
+//#include "sensitive.h"
 #include "SPI.h"
 #include "SPIFFS.h"
 #include <TaskScheduler.h>
 #include "time.h"
-#include "TFT_eSPI.h"
 #include "WebServer.h"
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
+#include "WROVER_KIT_LCD.h"
 
 //classes
 ModbusIP mb;                                     //ModbusIP object
 DHT dht;                                         //temperature humidity
 Adafruit_MCP23017 mcp;                           //io expander
-TFT_eSPI tft = TFT_eSPI();                       //lcd
+WROVER_KIT_LCD tft;                            //lcd
 Scheduler runner;                                //task schedule
 WebServer webServer(HTTP_WEBSERVER_PORT);       //webserver
 WebServer DataServer(DATASERVER_PORT);          //wifi server
@@ -180,22 +181,25 @@ void LCD_Update()
 {
   int startTimeMicros = micros();
   int endTimeMicros = 0;
-  
-  tft.fillScreen(TFT_BLACK);
+
+
+  //tft.fillScreen(WROVER_BLACK);
   String newbuf1 = "Temp:" + String(glb_temperature);
   String newbuf2 = "Humd:" + String(glb_humidity);
   String newbuf3 = "Pkts:" + String(glb_dataServerCounter);
-  LCD_DrawText(0, 0, "Temp    :" + String(glb_temperature), TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 10, "Humidity:" + String(glb_humidity), TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 20, "Pkts    :" + String(glb_dataServerCounter), TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 30, "Status  :" + glb_dhtStatusError, TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 40, "Time    :" + glb_TimeShort, TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 50, "Free mem:" + String(ESP.getFreeHeap()), TFT_WHITE, TFT_BLACK);
-  LCD_DrawText(0, 60, "IP Addr :" + glb_ipAddress.toString(), TFT_WHITE, TFT_BLACK);
+
+  LCD_DrawText(0, 0, "Temp    :" + String(glb_temperature), WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 10, "Humidity:" + String(glb_humidity), WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 20, "Pkts    :" + String(glb_dataServerCounter), WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 30, "Status  :" + glb_dhtStatusError, WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 40, "Time    :" + glb_TimeShort, WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 50, "Free mem:" + String(ESP.getFreeHeap()), WROVER_WHITE, WROVER_BLACK);
+  LCD_DrawText(0, 60, "IP Addr :" + glb_ipAddress.toString(), WROVER_WHITE, WROVER_BLACK);
 
   endTimeMicros = micros();
   endTimeMicros = endTimeMicros - startTimeMicros;
   glb_TaskTimes[20] = endTimeMicros;
+
 }
 //************************************************************************************
 void TelnetServer_Process()
@@ -1752,7 +1756,7 @@ void DHT11_TempHumidity()
   int tmpHumidity = 0;
   String tmpStatus = "";
 
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(WROVER_WHITE);
   tft.setTextSize(1);
   tmpHumidity = dht.getHumidity();
   tmpTemperature = dht.getTemperature();
@@ -1825,7 +1829,8 @@ void LCD_DrawText(int wid, int hei, String text, uint16_t textcolor, uint16_t ba
   tft.setCursor(wid, hei);
   tft.setTextColor(textcolor, backcolor);
   tft.setTextWrap(false);
-  tft.setCursor(wid, hei);
+  //tft.setCursor(wid, hei);
+  tft.setTextSize(1);
   tft.print(text);
 
   endTimeMicros = micros();
@@ -2455,11 +2460,39 @@ void Modbus_Registers_Create()
 void LCD_Setup()
 {
   Serial.println(F("ROUTINE_LCD_Setup"));
-  tft.init();
-  tft.setRotation(0);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(0);
+  tft.begin();
+  tft.setRotation(2);
+  uint8_t x = 0;
+  uint32_t id = tft.readId();
+  if (id)
+  {
+    Serial.println("======= WROVER ST7789V Display Test ========");
+  }
+  else
+  {
+    Serial.println("======= WROVER ILI9341 Display Test ========");
+  }
+  Serial.println("============================================");
+  Serial.printf("Display ID:      0x%06X\n", id);
+
+  x = tft.readcommand8(WROVER_RDDST);
+  Serial.print("Status:          0x");
+  Serial.println(x, HEX);
+  x = tft.readcommand8(WROVER_RDDPM);
+  Serial.print("Power Mode:      0x");
+  Serial.println(x, HEX);
+  x = tft.readcommand8(WROVER_RDDMADCTL);
+  Serial.print("MADCTL Mode:     0x");
+  Serial.println(x, HEX);
+  x = tft.readcommand8(WROVER_RDDCOLMOD);
+  Serial.print("Pixel Format:    0x");
+  Serial.println(x, HEX);
+  x = tft.readcommand8(WROVER_RDDIM);
+  Serial.print("Image Format:    0x");
+  Serial.println(x, HEX);
+  x = tft.readcommand8(WROVER_RDDSDR);
+  Serial.print("Self Diagnostic: 0x");
+  Serial.println(x, HEX);
 }
 //************************************************************************************
 void StartupPrinting_Setup()
@@ -2691,7 +2724,7 @@ void I2C_Setup()
   // i2c mode
   // used to override clock and data pins
   //Wire.begin(I2C_DATA_PIN, I2C_CLOCK_PIN);
-  mcp.begin(0);
+  //mcp.begin(0);
 }
 //************************************************************************************
 void EEPROM_Setup()
@@ -2718,8 +2751,8 @@ void IO_Pins_Setup()
   //pinMode(THERMOSTAT_COOL_CALL_PIN, INPUT);
   //pinMode(THERMOSTAT_FAN_CALL_PIN, INPUT);
   pinMode(TEST_PIN, OUTPUT);
- 
-  //INTERRUPTS
+
+   //INTERRUPTS
   attachInterrupt(digitalPinToInterrupt(THERMOSTAT_HEAT_CALL_PIN), Interrupt_Detect_AC, RISING);
 }
 //************************************************************************************
@@ -2759,7 +2792,7 @@ void OTA_Setup()
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
-    LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", TFT_WHITE, TFT_BLACK);
+    LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", WROVER_WHITE, WROVER_BLACK);
   });
 
   ArduinoOTA.onError([](ota_error_t error) {
