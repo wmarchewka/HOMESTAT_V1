@@ -8,10 +8,10 @@
 #define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
 
 //#include "sensitive.h"
+#include "include.h"
 #include "build_defs.h"
 #include "Free_Fonts.h"
-#include "include.h"
-#include "homestat_filesystem.h"
+#include "homestat_FS.h"
 #include "ModbusIP_ESP8266.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_MCP23017.h>
