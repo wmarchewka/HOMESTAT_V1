@@ -8,37 +8,39 @@
 #define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
 #define FORMAT_SPIFFS_IF_FAILED true
 
+//#include "sensitive.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_MCP23017.h>
+#include "build_defs.h"
+#include <DNSServer.h>
+#include <Esp.h>
+#include "Free_Fonts.h"
+#include <FS.h>
 #include "include.h"
-#include "Adafruit_MCP23017.h"
-#include "Adafruit_GFX.h"
+#include "ModbusIP_ESP8266.h"
+#include <Preferences.h>
+#include <SPI.h>
+#include <SPIFFS.h>
+#include <time.h>
+#include <WebServer.h>
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-#include "build_defs.h"
 #include <DHT.h>
-#include "DNSServer.h"
-#include <ESPmDNS.h>
-#include <ESP8266FtpServer.h>
-#include "Esp.h"
 #include <EEPROM.h>
-#include "Free_Fonts.h"
-#include "FS.h"
-#include <lwip/sockets.h>
+#include <ESP8266FtpServer.h>
+#include <ESPmDNS.h>
 #include <lwip/netdb.h>
+#include <lwip/sockets.h>
 #include <Modbus.h>
-#include "ModbusIP_ESP8266.h"
 #include <PubSubClient.h>
 #include <RemoteDebug.h>
 #include <rom/rtc.h>
-//#include "sensitive.h"
-#include "SPI.h"
-#include "SPIFFS.h"
 #include <TaskScheduler.h>
-#include "time.h"
-#include "WebServer.h"
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
+
 #ifdef ESP32_WROVER
 #include "WROVER_KIT_LCD.h"
 #include "esp_wrover_pins.h"
@@ -190,50 +192,6 @@ void MQTT_Callback(char *topic, byte *payload, unsigned int length)
     //digitalWrite(BUILTIN_LED, HIGH); // Turn the LED off by making the voltage HIGH
     Serial.println("************************************Received 0 from MQTT");
   }
-}
-//************************************************************************************
-void LCD_Update()
-{
-  int startTimeMicros = micros();
-  int endTimeMicros = 0;
-  uint16_t textcolor = 0;
-  uint16_t backgroundcolor = 0;
-
-  #ifdef ESP32_WROVER
-    textcolor = WROVER_WHITE;
-    backgroundcolor = WROVER_BLACK;
-  #elif ESP32_DEVKIT
-    textcolor =   TFT_WHITE;
-    backgroundcolor = TFT_BLACK;
-  #endif
-
-  char line1[30] = "";
-  char line2[30] = "";
-  char line3[30] = "";
-  char line4[30] = "";
-  char line5[30] = "";
-  char line6[30] = "";
-  char line7[30] = "";
-
-  sprintf(line1, "Temp    :%02d", glb_temperature);
-  sprintf(line2, "Humidity:%02d", glb_humidity);
-  sprintf(line3, "Pkts    :%06d", glb_dataServerCounter);
-  sprintf(line4, "Status  :%s", glb_dhtStatusError.c_str());
-  sprintf(line5, "Time    :%s", glb_lcdTime);
-  sprintf(line6, "Free mem:%07d", ESP.getFreeHeap());
-  sprintf(line7, "IP Addr :%s", glb_ipAddress.toString().c_str());
-
-  LCD_DrawText(0, 0, line1, textcolor, backgroundcolor);
-  LCD_DrawText(0, 10, line2, textcolor, backgroundcolor);
-  LCD_DrawText(0, 20, line3, textcolor, backgroundcolor);
-  LCD_DrawText(0, 30, line4, textcolor, backgroundcolor);
-  LCD_DrawText(0, 40, line5, textcolor, backgroundcolor);
-  LCD_DrawText(0, 50, line6, textcolor, backgroundcolor);
-  LCD_DrawText(0, 60, line7, textcolor, backgroundcolor);
-
-  endTimeMicros = micros();
-  endTimeMicros = endTimeMicros - startTimeMicros;
-  glb_TaskTimes[20] = endTimeMicros;
 }
 //************************************************************************************
 void TelnetServer_Process()
@@ -443,7 +401,7 @@ void TelnetServer_ProcessCommand()
   }
   else if (lastCmd.startsWith("wifi ssid"))
   {
-    EEPROM.get(glb_eepromSettingsOffset + ES_SSID, tmpglb_SSID);
+    //TODO GET SSID FROM PREFERENCES;
     Debug.println(tmpglb_SSID);
   }
   else if (lastCmd.startsWith("set wifi ssid"))
@@ -451,27 +409,32 @@ void TelnetServer_ProcessCommand()
     String tReg = lastCmd.substring(14);
     tReg.toCharArray(tmpLastCmd, tReg.length() + 1);
     Debug.print(F("Old SSID:"));
-    EEPROM.get(glb_eepromSettingsOffset + ES_SSID, tmpglb_SSID);
+    //TODO GET SSID FROM PREFERENCES;
+    //EEPROM.get(glb_eepromSettingsOffset + ES_SSID, tmpglb_SSID);
     Debug.println(tmpglb_SSID);
     Debug.print(F("New SSID:"));
     Debug.println(tmpLastCmd);
-    EEPROM.put(glb_eepromSettingsOffset + ES_SSID, tmpLastCmd);
-    EEPROM.commit();
+    //TODO CHANGE TO PREFERENCES
+    //EEPROM.put(glb_eepromSettingsOffset + ES_SSID, tmpLastCmd);
+    //EEPROM.commit();
     Debug.println(F("Will not take affect until restart..."));
   }
   else if (lastCmd.startsWith("wifi pass"))
   {
-    EEPROM.get(glb_eepromSettingsOffset + ES_SSIDPASSWORD, glb_SSIDpassword);
+    //EEPROM.get(glb_eepromSettingsOffset + ES_SSIDPASSWORD, glb_SSIDpassword);
+    //TODO GET WIFI PASS FROM PREFERENCES
   }
   else if (lastCmd.startsWith("set wifi pass"))
   {
     String tReg = lastCmd.substring(14);
     tReg.toCharArray(tmpLastCmd, tReg.length() + 1);
     Debug.print(F("Old SSID pass:"));
-    Debug.println(EEPROM.get(glb_eepromSettingsOffset + ES_SSIDPASSWORD, tmpglb_SSIDpassword));
+    //GET FROM PREFERENCES
+    //Debug.println(EEPROM.get(glb_eepromSettingsOffset + ES_SSIDPASSWORD, tmpglb_SSIDpassword));
     Debug.print(F("New SSID pass:"));
     Debug.println(tmpLastCmd);
-    EEPROM.put(glb_eepromSettingsOffset + ES_SSIDPASSWORD, tmpLastCmd);
+    //TODO CHANGE TO PREFERENCES
+    //EEPROM.put(glb_eepromSettingsOffset + ES_SSIDPASSWORD, tmpLastCmd);
     EEPROM.commit();
     Debug.println(F("Will not take affect until restart..."));
   }
@@ -1200,12 +1163,17 @@ void Modbus_Process()
   bool debug = 0;
   int startTimeMicros = micros();
   int endTimeMicros = 0;
-
+  
+  //TODO: CHANGE TO PREFERENCES
+  /*
+  
   if (debug)
     Serial.println(F("Processing Modbus..."));
 
   for (int x = 1; x <= glb_maxCoilSize - 1; x++)
   {
+
+ 
     if (glb_eepromCoilCopy[x] != mb.Coil(x))
     {
       glb_eepromCoilCopy[x] = mb.Coil(x);
@@ -1265,80 +1233,12 @@ void Modbus_Process()
     glb_lowMemory = glb_freeHeap;
     mb.Hreg(ESP_MEMORY_LOW_POINT, (word)(glb_lowMemory));
   }
+  */
 
   endTimeMicros = micros();
   mb.Hreg(PROCESS_MODBUS_TIME_MB_HREG, (word)(endTimeMicros));
   endTimeMicros = endTimeMicros - startTimeMicros;
   glb_TaskTimes[12] = endTimeMicros;
-}
-//************************************************************************************
-void EEPROM_Process()
-{
-  Serial.println("ROUTINE_EEPROM_Process");
-  int startTimeMicros = micros();
-  int endTimeMicros = 0;
-
-  bool debug = 0;
-  if (debug)
-    Debug.println(F(" Processing Updated EEPROM..."));
-
-  //check foir hreg change
-  for (int x = 1; x < glb_maxHregSize; x++)
-  {
-    if (mb.Hreg(x) != glb_eepromHregCopy[x])
-    {
-      if (debug)
-        Debug.print(F(" mb hreg:"));
-      if (debug)
-        Debug.print(x);
-      if (debug)
-        Debug.print(F(" value:"));
-      if (debug)
-        Debug.print(mb.Hreg(x));
-      if (debug)
-        Debug.print(F(" eepromcopy:"));
-      if (debug)
-        Debug.println(glb_eepromHregCopy[x]);
-      //EEPROM.write( x, int(mb.Hreg(x)) );
-      glb_eepromHregCopy[x] = mb.Hreg(x);
-    }
-  }
-
-  //check for coil change
-  for (int y = 1; y <= glb_maxCoilSize; y++)
-  {
-    if (bool(glb_eepromCoilCopy[y]) != mb.Coil(y))
-    {
-      if (debug)
-        Debug.print(F("mb coil:"));
-      if (debug)
-        Debug.print(y);
-      if (debug)
-        Debug.print(F(" value:"));
-      if (debug)
-        Debug.print(mb.Coil(y));
-      if (debug)
-        Debug.print(F(" eepromcopy:"));
-      if (debug)
-        Debug.println(glb_eepromCoilCopy[y]);
-      if (debug)
-        Debug.print(F(" y + offset:"));
-      if (debug)
-        Debug.println(y + glb_eepromCoilOffset);
-      //EEPROM.write(y + glb_eepromCoilOffset, int( mb.Coil(y) ) );
-      glb_eepromCoilCopy[y] = int(mb.Coil(y));
-      if (debug)
-        Debug.print(F(" New eepromcopy:"));
-      if (debug)
-        Debug.println(glb_eepromCoilCopy[y]);
-    }
-  }
-  //EEPROM.commit();
-  //if (debug) Debug.println("commit");
-
-  endTimeMicros = micros();
-  endTimeMicros = endTimeMicros - startTimeMicros;
-  glb_TaskTimes[13] = endTimeMicros;
 }
 //************************************************************************************
 void ErrorCodes_Process()
@@ -1641,47 +1541,7 @@ void Thermostat_Detect()
   mb.Hreg(THERM_DETECT_ROUTINE_TIME_MB_HREG, (word)(endTimeMicros));
   glb_TaskTimes[6] = endTimeMicros;
 }
-//************************************************************************************
-void IO_ControlPins()
-{
 
-  int startTimeMicros = micros();
-  int endTimeMicros = 0;
-
-  bool debug = 0;
-  static int counter;
-  counter++;
-
-  if (counter == 10)
-  {
-    Serial.println(F("ROUTINE_IO_ControlPins"));
-    counter = 0;
-  }
-  //read analog to get light sensor value
-  glb_lightSensor = analogRead(A0);
-  mb.Hreg(ANALOG_SENSOR_MB_HREG, (word)glb_lightSensor);
-
-  //Serial.print("light Sensor Value - ");
-  //Serial.println(glb_lightSensor);
-
-  //do digital writes
-
-  mcp.digitalWrite(FAN_OVERRIDE_PIN, (bool)(mb.Coil(FAN_OVERRIDE_MB_COIL)));
-  delay(10);
-  mcp.digitalWrite(FAN_CONTROL_PIN, (bool)(mb.Coil(FAN_CONTROL_MB_COIL)));
-  delay(10);
-  mcp.digitalWrite(HEAT_OVERRIDE_PIN, (bool)(mb.Coil(HEAT_OVERRIDE_MB_COIL)));
-  delay(10);
-  mcp.digitalWrite(HEAT_CONTROL_PIN, (bool)(mb.Coil(HEAT_CONTROL_MB_COIL)));
-  delay(10);
-  mcp.digitalWrite(COOL_OVERRIDE_PIN, (bool)(mb.Coil(COOL_OVERRIDE_MB_COIL)));
-  delay(10);
-  mcp.digitalWrite(COOL_CONTROL_PIN, (bool)(mb.Coil(COOL_CONTROL_MB_COIL)));
-
-  endTimeMicros = micros();
-  endTimeMicros = endTimeMicros - startTimeMicros;
-  glb_TaskTimes[7] = endTimeMicros;
-}
 //************************************************************************************
 void Wifi_CheckStatus()
 {
@@ -1827,56 +1687,7 @@ void DHT11_TempHumidity()
   mb.Hreg(DHT_ROUTINE_TIME_MB_HREG, (word)(elaspedTimeMicros));
   glb_TaskTimes[2] = elaspedTimeMicros;
 }
-//************************************************************************************
-void LCD_DrawText(int wid, int hei, char *text, uint16_t textcolor, uint16_t backcolor)
-{
 
-  int startTimeMicros = micros();
-  int endTimeMicros;
-
-  bool debug = 0;
-
-  if (debug)
-    Debug.print(F("Text color:"));
-  if (debug)
-    Debug.println(textcolor);
-  if (debug)
-    Debug.print(F("Backcolor:"));
-  if (debug)
-    Debug.println(backcolor);
-
-  if (debug)
-    Debug.print(F("Display:"));
-  if (debug)
-  //Debug.println(text);
-  tft.setTextColor(textcolor, backcolor);
-  tft.setTextWrap(false);
-  tft.setTextSize(1);
-  tft.setCursor(wid, hei);
-  tft.print(text);
-
-  endTimeMicros = micros();
-  endTimeMicros = micros() - startTimeMicros;
-  mb.Hreg(SCREEN_TIME_MB_HREG, (word)(endTimeMicros));
-}
-//************************************************************************************
-void Interrupt_Detect_AC()
-{
-  bool debug = 0;
-  static unsigned long endDetectMicros;
-  unsigned long startDetectMicros = micros();
-  glb_heatPulseDuration = (startDetectMicros - endDetectMicros);
-  if (glb_heatPulseDuration > 10)
-  {
-    glb_heatPulseCounter++;
-    //glb_fanPulseCounter++;
-    //glb_coolPulseCounter++;
-    if (debug)
-      Serial.println(glb_heatPulseDuration);
-  }
-
-  endDetectMicros = startDetectMicros;
-}
 //************************************************************************************
 void loop()
 {
@@ -2376,53 +2187,54 @@ void setup()
 
   #ifdef ESP32_WROVER
     Serial.println("Board defined as Espressif ESP - WROVER - KIT");
+  #elif ESP32_DEVKIT
+  Serial.println("Board defined as Espressif ESP - DEVKIT");
   #endif
 
-  Serial.println();
-  delay(1000);
-  FileSystem_DeleteFile(glb_errorLogPath);
-  Serial.println(getFreeHeap());
-  //FileSystem_Format();
-  FileSystem_ErrorLogCreate();
-  ThermostatMode_Setup();
-  EEPROM_Setup();
-  if (glb_tempController)
-    EEPROM_LoadSettings();
-  WiFiManager_Setup();
-  //blynkSetup();
-  if (glb_tempController)
-    TimeSync_Setup();
-  TelnetServer_Setup();
-  if (glb_tempController)
-    LCD_Setup();
-  if (glb_tempController)
-    Modbus_Registers_Create();
-  if (glb_tempController)
-    FileSystem_SystemLogCreate();
-  FileSystem_DataLogCreate();
-  if (glb_tempController)
-    FileSystem_DebugLogCreate();
-  if (glb_tempController)
-    I2C_Setup();
-  if (glb_tempController)
-    IO_Pins_Setup();
-  if (glb_tempController)
-    selftestMcp();
-  DHT11_Sensor_Setup();
-  OTA_Setup();
-  if (glb_tempController)
-    Modbus_Registers_Setup();
-  if (glb_tempController)
-    Thermostat_ControlDisable();
-  TaskScheduler_Setup();
-  MQTT_Setup();
-  if (glb_tempController)
-    DataServer_Setup();
-  if (glb_tempController)
-    WebServer_Setup();
-  StartupPrinting_Setup();
-  Tasks_Enable_Setup();
-  mDNS_Setup();
+    Serial.println();
+    delay(1000);
+    FileSystem_DeleteFile(glb_errorLogPath);
+    Serial.println(getFreeHeap());
+    //FileSystem_Format();
+    FileSystem_ErrorLogCreate();
+    ThermostatMode_Setup();
+    EEPROM_Setup();
+    if (glb_tempController)
+      EEPROM_LoadSettings();
+    WiFiManager_Setup();
+    if (glb_tempController)
+      TimeSync_Setup();
+    TelnetServer_Setup();
+    if (glb_tempController)
+      LCD_Setup();
+    if (glb_tempController)
+      Modbus_Registers_Create();
+    if (glb_tempController)
+      FileSystem_SystemLogCreate();
+    FileSystem_DataLogCreate();
+    if (glb_tempController)
+      FileSystem_DebugLogCreate();
+    if (glb_tempController)
+      I2C_Setup();
+    if (glb_tempController)
+      IO_Pins_Setup();
+    if (glb_tempController)
+      selftestMcp();
+    DHT11_Sensor_Setup();
+    OTA_Setup();
+    if (glb_tempController)
+      Modbus_Registers_Setup();
+    if (glb_tempController)
+      Thermostat_ControlDisable();
+    TaskScheduler_Setup();
+    MQTT_Setup();
+    if (glb_tempController)
+      DataServer_Setup();
+    if (glb_tempController)
+      WebServer_Setup();
+    StartupPrinting_Setup();
+    Tasks_Enable_Setup();
+    mDNS_Setup();
 }
 //************************************************************************************
 void ThermostatMode_Setup()
@@ -2455,12 +2267,6 @@ void mDNS_Setup()
   }
 }
 //************************************************************************************
-void EEPROM_LoadSettings()
-{
-  Serial.println(F("ROUTINE_EEPROM_LoadSettingss"));
-  //wifi ssid and password are stord in the wifi manager Library
-}
-//************************************************************************************
 void Modbus_Registers_Create()
 {
   //create modbus registers and copy contents from eeprom
@@ -2481,13 +2287,13 @@ void Modbus_Registers_Create()
   //create coil registers and copy contents from eepromCopy
   Serial.print(F("  Creating Modbus Coil Registers Max size : "));
   Serial.println(glb_maxCoilSize);
-  for (int x = 1; x <= glb_maxCoilSize; x++)
+  /* for (int x = 1; x <= glb_maxCoilSize; x++)
   {
     mb.addCoil(x);
     //tmp = EEPROM.read(x);
     mb.Coil(x, COIL_OFF);
     glb_eepromCoilCopy[x] = COIL_OFF;
-  }
+  } */
 }
 //************************************************************************************
 void LCD_Setup()
@@ -2536,8 +2342,100 @@ void LCD_Setup()
   tft.fillScreen(TFT_BLACK);
   #endif
 }
-
 //************************************************************************************
+void LCD_Update()
+{
+  int startTimeMicros = micros();
+  int endTimeMicros = 0;
+  uint16_t textcolor = 0;
+  uint16_t backgroundcolor = 0;
+
+#ifdef ESP32_WROVER
+  textcolor = WROVER_WHITE;
+  backgroundcolor = WROVER_BLACK;
+#elif ESP32_DEVKIT
+  textcolor = TFT_WHITE;
+  backgroundcolor = TFT_BLACK;
+#endif
+
+  char line1[30] = "";
+  char line2[30] = "";
+  char line3[30] = "";
+  char line4[30] = "";
+  char line5[30] = "";
+  char line6[30] = "";
+  char line7[30] = "";
+
+  sprintf(line1, "Temp    :%02d", glb_temperature);
+  sprintf(line2, "Humidity:%02d", glb_humidity);
+  sprintf(line3, "Pkts    :%06d", glb_dataServerCounter);
+  sprintf(line4, "Status  :%s", glb_dhtStatusError.c_str());
+  sprintf(line5, "Time    :%s", glb_lcdTime);
+  sprintf(line6, "Free mem:%07d", ESP.getFreeHeap());
+  sprintf(line7, "IP Addr :%s", glb_ipAddress.toString().c_str());
+
+  LCD_DrawText(0, 0, line1, textcolor, backgroundcolor);
+  LCD_DrawText(0, 10, line2, textcolor, backgroundcolor);
+  LCD_DrawText(0, 20, line3, textcolor, backgroundcolor);
+  LCD_DrawText(0, 30, line4, textcolor, backgroundcolor);
+  LCD_DrawText(0, 40, line5, textcolor, backgroundcolor);
+  LCD_DrawText(0, 50, line6, textcolor, backgroundcolor);
+  LCD_DrawText(0, 60, line7, textcolor, backgroundcolor);
+
+  endTimeMicros = micros();
+  endTimeMicros = endTimeMicros - startTimeMicros;
+  glb_TaskTimes[20] = endTimeMicros;
+}
+//************************************************************************************
+void LCD_DrawText(int wid, int hei, char *text, uint16_t textcolor, uint16_t backcolor)
+{
+
+  int startTimeMicros = micros();
+  int endTimeMicros;
+
+  bool debug = 0;
+
+  if (debug)
+    Debug.print(F("Text color:"));
+  if (debug)
+    Debug.println(textcolor);
+  if (debug)
+    Debug.print(F("Backcolor:"));
+  if (debug)
+    Debug.println(backcolor);
+
+  if (debug)
+    Debug.print(F("Display:"));
+  if (debug)
+    //Debug.println(text);
+    tft.setTextColor(textcolor, backcolor);
+  tft.setTextWrap(false);
+  tft.setTextSize(1);
+  tft.setCursor(wid, hei);
+  tft.print(text);
+
+  endTimeMicros = micros();
+  endTimeMicros = micros() - startTimeMicros;
+  mb.Hreg(SCREEN_TIME_MB_HREG, (word)(endTimeMicros));
+}
+//************************************************************************************
+void Interrupt_Detect_AC()
+{
+  bool debug = 0;
+  static unsigned long endDetectMicros;
+  unsigned long startDetectMicros = micros();
+  glb_heatPulseDuration = (startDetectMicros - endDetectMicros);
+  if (glb_heatPulseDuration > 10)
+  {
+    glb_heatPulseCounter++;
+    //glb_fanPulseCounter++;
+    //glb_coolPulseCounter++;
+    if (debug)
+      Serial.println(glb_heatPulseDuration);
+  }
+
+  endDetectMicros = startDetectMicros;
+}
 void StartupPrinting_Setup()
 {
   Serial.println(F("ROUTINE_StartupPrinting_Setup"));
@@ -2561,8 +2459,6 @@ void StartupPrinting_Setup()
   Serial.print(F("  CPU Frequency : "));
   Serial.print(ESP.getCpuFreqMHz());
   Serial.println(F("mhz"));
-  Serial.print(F("  Max EEPROM size : "));
-  Serial.println(glb_maxEEpromSize);
   Serial.print(F("  Free RAM : "));
   glb_freeHeap = ESP.getFreeHeap();
   Serial.println(glb_freeHeap);
@@ -2781,12 +2677,6 @@ void I2C_Setup()
   #endif
 }
 //************************************************************************************
-void EEPROM_Setup()
-{
-  Serial.println(F("ROUTINE_EEPROM_Setup"));
-  EEPROM.begin(glb_maxEEpromSize);
-}
-//************************************************************************************
 void IO_Pins_Setup()
 {
   Serial.println(F("ROUTINE_IO_Pins_Setup"));
@@ -2808,6 +2698,47 @@ void IO_Pins_Setup()
 
   //INTERRUPTS
   attachInterrupt(digitalPinToInterrupt(THERMOSTAT_HEAT_CALL_PIN), Interrupt_Detect_AC, RISING);
+}
+//************************************************************************************
+void IO_ControlPins()
+{
+
+  int startTimeMicros = micros();
+  int endTimeMicros = 0;
+
+  bool debug = 0;
+  static int counter;
+  counter++;
+
+  if (counter == 10)
+  {
+    Serial.println(F("ROUTINE_IO_ControlPins"));
+    counter = 0;
+  }
+  //read analog to get light sensor value
+  glb_lightSensor = analogRead(A0);
+  mb.Hreg(ANALOG_SENSOR_MB_HREG, (word)glb_lightSensor);
+
+  //Serial.print("light Sensor Value - ");
+  //Serial.println(glb_lightSensor);
+
+  //do digital writes
+
+  mcp.digitalWrite(FAN_OVERRIDE_PIN, (bool)(mb.Coil(FAN_OVERRIDE_MB_COIL)));
+  delay(10);
+  mcp.digitalWrite(FAN_CONTROL_PIN, (bool)(mb.Coil(FAN_CONTROL_MB_COIL)));
+  delay(10);
+  mcp.digitalWrite(HEAT_OVERRIDE_PIN, (bool)(mb.Coil(HEAT_OVERRIDE_MB_COIL)));
+  delay(10);
+  mcp.digitalWrite(HEAT_CONTROL_PIN, (bool)(mb.Coil(HEAT_CONTROL_MB_COIL)));
+  delay(10);
+  mcp.digitalWrite(COOL_OVERRIDE_PIN, (bool)(mb.Coil(COOL_OVERRIDE_MB_COIL)));
+  delay(10);
+  mcp.digitalWrite(COOL_CONTROL_PIN, (bool)(mb.Coil(COOL_CONTROL_MB_COIL)));
+
+  endTimeMicros = micros();
+  endTimeMicros = endTimeMicros - startTimeMicros;
+  glb_TaskTimes[7] = endTimeMicros;
 }
 //************************************************************************************
 void DHT11_Sensor_Setup()
@@ -3090,22 +3021,6 @@ void ChipID_Acquire()
   chipid = ESP.getEfuseMac();                                        //The chip ID is essentially its MAC address(length: 6 bytes).
   Serial.printf("  ESP32 Chip ID = %04X", (uint16_t)(chipid >> 32)); //print High 2 bytes
   Serial.printf("%08X\n", (uint32_t)chipid);                         //print Low 4bytes.
-  //sprintf(glbChipID, "%12X", (uint64_t)(chipid >> 48));
-  //sprintf(glbChipID1,"%08X\n", (uint32_t)chipid);
-  //Serial.print("string chipid : ");
-  //Serial.print(glbChipID);
-  //Serial.print(glbChipID1);
-}
-//************************************************************************************
-void EEPROM_Erase()
-{
-  Serial.println("ROUTINE_EEPROM_Erase");
-  //zero out eeprom registers
-  for (int x = 0; x <= 4095; x++)
-  {
-    EEPROM.write(x, 0);
-  }
-  EEPROM.commit();
 }
 //************************************************************************************
 void Thermostat_ControlDisable()
