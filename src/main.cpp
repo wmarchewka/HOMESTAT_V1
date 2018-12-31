@@ -85,7 +85,7 @@ Task taskDataServer_Process_16(10, TASK_FOREVER, &DataServer_Process, NULL);
 Task taskModbusClientSend_17(5000, TASK_FOREVER, &Modbus_Client_Send, NULL);
 Task taskOTA_Update_18(100, TASK_FOREVER, &OTA_Update, NULL);
 Task taskLogDataSave_19(60000, TASK_FOREVER, &FileSystem_DataLogSave, NULL);
-Task taskLCDUpdate_20(1000, TASK_FOREVER, &LCD_Update, NULL);
+Task taskLCDUpdate_20(500, TASK_FOREVER, &LCD_Update, NULL);
 Task taskMQTTRUN_21(50, TASK_FOREVER, &MQTT_RunLoop, NULL);
 Task taskMQTTUpdate_22(1000, TASK_FOREVER, &MQTT_Publish, NULL);
 //************************************************************************************
@@ -207,22 +207,33 @@ void LCD_Update()
     backgroundcolor = TFT_BLACK;
   #endif
 
-    //tft.fillScreen(WROVER_BLACK);
-    String newbuf1 = "Temp:" + String(glb_temperature);
-    String newbuf2 = "Humd:" + String(glb_humidity);
-    String newbuf3 = "Pkts:" + String(glb_dataServerCounter);
+  char line1[30] = "";
+  char line2[30] = "";
+  char line3[30] = "";
+  char line4[30] = "";
+  char line5[30] = "";
+  char line6[30] = "";
+  char line7[30] = "";
 
-    LCD_DrawText(0, 0, "Temp    :" + String(glb_temperature), textcolor, backgroundcolor);
-    LCD_DrawText(0, 10, "Humidity:" + String(glb_humidity), textcolor, backgroundcolor);
-    LCD_DrawText(0, 20, "Pkts    :" + String(glb_dataServerCounter), textcolor, backgroundcolor);
-    LCD_DrawText(0, 30, "Status  :" + glb_dhtStatusError, textcolor, backgroundcolor);
-    LCD_DrawText(0, 40, "Time    :" + glb_TimeShort, textcolor, backgroundcolor);
-    LCD_DrawText(0, 50, "Free mem:" + String(ESP.getFreeHeap()), textcolor, backgroundcolor);
-    LCD_DrawText(0, 60, "IP Addr :" + glb_ipAddress.toString(), textcolor, backgroundcolor);
+  sprintf(line1, "Temp    :%02d", glb_temperature);
+  sprintf(line2, "Humidity:%02d", glb_humidity);
+  sprintf(line3, "Pkts    :%06d", glb_dataServerCounter);
+  sprintf(line4, "Status  :%s", glb_dhtStatusError.c_str());
+  sprintf(line5, "Time    :%s", glb_lcdTime);
+  sprintf(line6, "Free mem:%07d", ESP.getFreeHeap());
+  sprintf(line7, "IP Addr :%s", glb_ipAddress.toString().c_str());
 
-    endTimeMicros = micros();
-    endTimeMicros = endTimeMicros - startTimeMicros;
-    glb_TaskTimes[20] = endTimeMicros;
+  LCD_DrawText(0, 0, line1, textcolor, backgroundcolor);
+  LCD_DrawText(0, 10, line2, textcolor, backgroundcolor);
+  LCD_DrawText(0, 20, line3, textcolor, backgroundcolor);
+  LCD_DrawText(0, 30, line4, textcolor, backgroundcolor);
+  LCD_DrawText(0, 40, line5, textcolor, backgroundcolor);
+  LCD_DrawText(0, 50, line6, textcolor, backgroundcolor);
+  LCD_DrawText(0, 60, line7, textcolor, backgroundcolor);
+
+  endTimeMicros = micros();
+  endTimeMicros = endTimeMicros - startTimeMicros;
+  glb_TaskTimes[20] = endTimeMicros;
 }
 //************************************************************************************
 void TelnetServer_Process()
@@ -1099,16 +1110,13 @@ void TimeRoutine()
     unsigned long timeout = 1000;
     static bool firstRun = true;
     struct tm *timeinfo;
-    struct tm tinfo;
-    static time_t now;
-    time_t tmpNow;
+    time_t now;
 
     if (firstRun)
-
+      //daylight savings
       configTime(-4 * 3600, 0, "pool.ntp.org");
 
     secondsCounter++;
-    now++;
 
     if (firstRun)
       timeout = 5000;
@@ -1127,14 +1135,13 @@ void TimeRoutine()
       Serial.println(F("  Waiting for time from time sync"));
       while (millis() < (timeout + start))
       {
-        tmpNow = time(nullptr);
-        if (tmpNow != 0)
+        now = time(nullptr);
+        if (now != 0)
         {
           if (firstRun)
           {
             Serial.println(F("  First run waiting for time from time sync..."));
             firstRun = false;
-            now = tmpNow;
             glb_BootTime = ctime(&now);
             String tmp = (F("Boot time : "));
             FileSystem_ErrorLogSave(tmp + glb_BootTime);
@@ -1142,7 +1149,6 @@ void TimeRoutine()
             Serial.print(glb_BootTime);
           }
           secondsCounter = 0;
-          now = tmpNow;
           Serial.print("  Got time from timeserver : ");
           Serial.print(ctime(&now));
           break;
@@ -1151,16 +1157,7 @@ void TimeRoutine()
       }
     }
 
-    if (debug)
-      Serial.print(F("  now2:"));
-    if (debug)
-      Serial.println(now);
-
-    if (debug)
-      Serial.print(F("  &now:"));
-    if (debug)
-      Serial.print(ctime(&now));
-
+    time(&now);
     timeinfo = localtime(&now);
     glb_TimeLong = ctime(&now);
     glb_TimeLong.trim();
@@ -1171,8 +1168,7 @@ void TimeRoutine()
     glb_timeDay = String(timeinfo->tm_mday);
     glb_timeYear = String((timeinfo->tm_year) - 100);
     glb_timeWeekDay = String(timeinfo->tm_wday);
-    glb_TimeShort = String(glb_timeHour) + ":" + String(glb_timeMin) + ":" + String(glb_timeSec);
-
+    sprintf(glb_lcdTime, "%02d:%02d:%02d", glb_timeHour.toInt(), glb_timeMin.toInt(), glb_timeSec.toInt());
     mb.Hreg(TIME_HH_MB_HREG, glb_timeHour.toInt());
     mb.Hreg(TIME_MM_MB_HREG, glb_timeMin.toInt());
     mb.Hreg(TIME_SS_MB_HREG, glb_timeSec.toInt());
@@ -1182,8 +1178,6 @@ void TimeRoutine()
     glb_TaskTimes[3] = endTimeMicros;
     if (endTimeMicros > 100000)
     {
-      if (debug)
-        Serial.print(F("  Time went long:"));
       if (debug)
         Serial.println(endTimeMicros);
     }
@@ -1671,11 +1665,17 @@ void IO_ControlPins()
   //Serial.println(glb_lightSensor);
 
   //do digital writes
+
   mcp.digitalWrite(FAN_OVERRIDE_PIN, (bool)(mb.Coil(FAN_OVERRIDE_MB_COIL)));
+  delay(10);
   mcp.digitalWrite(FAN_CONTROL_PIN, (bool)(mb.Coil(FAN_CONTROL_MB_COIL)));
+  delay(10);
   mcp.digitalWrite(HEAT_OVERRIDE_PIN, (bool)(mb.Coil(HEAT_OVERRIDE_MB_COIL)));
+  delay(10);
   mcp.digitalWrite(HEAT_CONTROL_PIN, (bool)(mb.Coil(HEAT_CONTROL_MB_COIL)));
+  delay(10);
   mcp.digitalWrite(COOL_OVERRIDE_PIN, (bool)(mb.Coil(COOL_OVERRIDE_MB_COIL)));
+  delay(10);
   mcp.digitalWrite(COOL_CONTROL_PIN, (bool)(mb.Coil(COOL_CONTROL_MB_COIL)));
 
   endTimeMicros = micros();
@@ -1828,7 +1828,7 @@ void DHT11_TempHumidity()
   glb_TaskTimes[2] = elaspedTimeMicros;
 }
 //************************************************************************************
-void LCD_DrawText(int wid, int hei, String text, uint16_t textcolor, uint16_t backcolor)
+void LCD_DrawText(int wid, int hei, char *text, uint16_t textcolor, uint16_t backcolor)
 {
 
   int startTimeMicros = micros();
@@ -1848,12 +1848,11 @@ void LCD_DrawText(int wid, int hei, String text, uint16_t textcolor, uint16_t ba
   if (debug)
     Debug.print(F("Display:"));
   if (debug)
-    Debug.println(text);
-  tft.setCursor(wid, hei);
+  //Debug.println(text);
   tft.setTextColor(textcolor, backcolor);
   tft.setTextWrap(false);
-  //tft.setCursor(wid, hei);
   tft.setTextSize(1);
+  tft.setCursor(wid, hei);
   tft.print(text);
 
   endTimeMicros = micros();
@@ -2375,13 +2374,13 @@ void setup()
   Serial.begin(115200);
   Serial.println("ROUTINE_setup");
 
-#ifdef ESP32_WROVER
-  Serial.println("Board defined as Espressif ESP - WROVER - KIT");
-#endif
+  #ifdef ESP32_WROVER
+    Serial.println("Board defined as Espressif ESP - WROVER - KIT");
+  #endif
 
   Serial.println();
   delay(1000);
-  //FileSystem_DeleteFile(glb_errorLogPath);
+  FileSystem_DeleteFile(glb_errorLogPath);
   Serial.println(getFreeHeap());
   //FileSystem_Format();
   FileSystem_ErrorLogCreate();
@@ -2858,7 +2857,7 @@ void OTA_Setup()
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
-    LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", TEXTCOLOR, BACKGROUNDCOLOR);
+    //LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", TEXTCOLOR, BACKGROUNDCOLOR);
   });
 
   ArduinoOTA.onError([](ota_error_t error) {

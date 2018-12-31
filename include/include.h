@@ -168,7 +168,7 @@ const char *glb_mdnsName = "HOMESTAT";
 float glb_VCC = 0.0;
 uint64_t chipid;
 const char* mqtt_server = "10.0.0.26";
-
+char glb_lcdTime[20];
 
 //function declarations
 void print_reset_reason(RESET_REASON);
@@ -194,7 +194,7 @@ bool LED_OnEnable();
 void LED_OnDisable();
 void LED_On();
 void LED_Off();
-void LCD_DrawText(int, int, String, uint16_t, uint16_t);
+void LCD_DrawText(int, int, char *, uint16_t, uint16_t);
 void LCD_Setup();
 void EEPROM_LoadSettings();
 void FileSystem_DataLogSave();
