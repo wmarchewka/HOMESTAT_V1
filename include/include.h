@@ -89,16 +89,6 @@ const int FAN_OVERRIDE_PIN PROGMEM = 4;
 const int FAN_CONTROL_PIN PROGMEM = 5;
 const int LED PROGMEM = 7;
 
-//pin mappings to esp8266
-const int LIGHT_SENSOR_PIN PROGMEM = A0;
-const int DHT11_DATA_PIN PROGMEM = 4;
-const int I2C_CLOCK_PIN PROGMEM = 22;
-const int I2C_DATA_PIN PROGMEM = 21;
-const int THERMOSTAT_HEAT_CALL_PIN PROGMEM = 32;
-const int THERMOSTAT_COOL_CALL_PIN PROGMEM = 33;
-//const int THERMOSTAT_FAN_CALL_PIN PROGMEM = 10;
-const int TEST_PIN PROGMEM = 34;
-
 //misc variables
 
 //GLOBAL variables
@@ -127,7 +117,7 @@ word glb_errorThermostat = 0;
 word glb_WiFiStatus = 0;
 word glb_eepromHregCopy[glb_maxHregSize] = {};
 bool glb_eepromCoilCopy[glb_maxCoilSize] = {};
-word glb_freeHeap = 0;
+uint32_t glb_freeHeap = 0;
 int glb_lowMemory = 80000;
 IPAddress glb_ipAddress; //ip address
 String glb_dhtStatusError = "";
@@ -266,5 +256,7 @@ void MQTT_Publish();
 void MQTT_Reconnect();
 void MQTT_Callback(char *, byte *, unsigned int );
 void testVCC();
-String WebServer_getPage();
+u_int getFreeHeap();
+
+    String WebServer_getPage();
 #endif

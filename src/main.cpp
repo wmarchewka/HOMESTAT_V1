@@ -39,20 +39,32 @@
 #include <WiFiManager.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
+#ifdef ESP32_WROVER
 #include "WROVER_KIT_LCD.h"
+#include "esp_wrover_pins.h"
+#elif ESP32_DEVKIT
+#include "TFT_eSPI.h" // Include the graphics library (this includes the sprite functions)
+#include "esp_devkit_pins.h"
+#endif
 
 //classes
-ModbusIP mb;                                     //ModbusIP object
-DHT dht;                                         //temperature humidity
-Adafruit_MCP23017 mcp;                           //io expander
-WROVER_KIT_LCD tft;                            //lcd
-Scheduler runner;                                //task schedule
-WebServer webServer(HTTP_WEBSERVER_PORT);       //webserver
-WebServer DataServer(DATASERVER_PORT);          //wifi server
-RemoteDebug Debug;                               //telnet debug
-WiFiManager wifiManager;                         //wifi manager
-WiFiClient espClient;                             // wifi client for use withMQTT 
-PubSubClient MQTT_Client(espClient);             // MQTT client
+ModbusIP mb;           //ModbusIP object
+DHT dht;               //temperature humidity
+Adafruit_MCP23017 mcp; //io expander
+
+#ifdef ESP32_WROVER
+  WROVER_KIT_LCD tft; //lcd
+#elif ESP32_DEVKIT
+  TFT_eSPI tft = TFT_eSPI(); // Create object "tft"
+#endif
+
+Scheduler runner;                         //task schedule
+WebServer webServer(HTTP_WEBSERVER_PORT); //webserver
+WebServer DataServer(DATASERVER_PORT);    //wifi server
+RemoteDebug Debug;                        //telnet debug
+WiFiManager wifiManager;                  //wifi manager
+WiFiClient espClient;                     // wifi client for use withMQTT
+PubSubClient MQTT_Client(espClient);      // MQTT client
 
 Task taskModbusReadData_1(30, TASK_FOREVER, &Modbus_ReadData, NULL);
 Task taskDHT11Temp_2(2000, TASK_FOREVER, &DHT11_TempHumidity, NULL);
@@ -96,17 +108,20 @@ void MQTT_RunLoop()
 void MQTT_Publish()
 {
   Serial.println(F("ROUTINE_MQTT_Publish"));
-  
+
   char msg[50];
   String message = "WALT";
-  glb_TimeLong.toCharArray(msg ,50);
+  glb_TimeLong.toCharArray(msg, 50);
   bool debug = 1;
-  if (debug) Serial.println(" Sending values to MQTT server...");
-  if (!MQTT_Client.connected()){
+  if (debug)
+    Serial.println(" Sending values to MQTT server...");
+  if (!MQTT_Client.connected())
+  {
     Serial.println("  MQTT reconnecting");
     MQTT_Reconnect();
   }
-  else {
+  else
+  {
     MQTT_Client.publish("outTopic", msg);
   }
 }
@@ -117,37 +132,37 @@ void MQTT_Setup()
 
   Serial.println("  Setting up MQTT client...");
   MQTT_Client.setServer(mqtt_server, 1883);
-  MQTT_Client.setCallback(MQTT_Callback); 
+  MQTT_Client.setCallback(MQTT_Callback);
 }
 //************************************************************************************
 void MQTT_Reconnect()
 {
   Serial.println(F("ROUTINE_MQTT_Reconnect"));
-  
+
   // Loop until we're reconnected
   //while (!MQTT_Client.connected())
   //{
-    Serial.println("  Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "ESP8266Client-";
-    clientId += String(random(0xffff), HEX);
-    // Attempt to connect
-    if (MQTT_Client.connect(clientId.c_str()))
-    {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      MQTT_Client.publish("outTopic", "hello world");
-      // ... and resubscribe
-      MQTT_Client.subscribe("inTopic");
-    }
-    else
-    {
-     Serial.print("failed, rc = ");
-     Serial.println(MQTT_Client.state());
-     //Serial.println(" try again in 5 seconds");
-     // Wait 5 seconds before retrying
-     //delay(5000);
-    }
+  Serial.println("  Attempting MQTT connection...");
+  // Create a random client ID
+  String clientId = "ESP8266Client-";
+  clientId += String(random(0xffff), HEX);
+  // Attempt to connect
+  if (MQTT_Client.connect(clientId.c_str()))
+  {
+    Serial.println("connected");
+    // Once connected, publish an announcement...
+    MQTT_Client.publish("outTopic", "hello world");
+    // ... and resubscribe
+    MQTT_Client.subscribe("inTopic");
+  }
+  else
+  {
+    Serial.print("failed, rc = ");
+    Serial.println(MQTT_Client.state());
+    //Serial.println(" try again in 5 seconds");
+    // Wait 5 seconds before retrying
+    //delay(5000);
+  }
   //}
 }
 //************************************************************************************
@@ -181,25 +196,33 @@ void LCD_Update()
 {
   int startTimeMicros = micros();
   int endTimeMicros = 0;
+  uint16_t textcolor = 0;
+  uint16_t backgroundcolor = 0;
 
+  #ifdef ESP32_WROVER
+    textcolor = WROVER_WHITE;
+    backgroundcolor = WROVER_BLACK;
+  #elif ESP32_DEVKIT
+    textcolor =   TFT_WHITE;
+    backgroundcolor = TFT_BLACK;
+  #endif
 
-  //tft.fillScreen(WROVER_BLACK);
-  String newbuf1 = "Temp:" + String(glb_temperature);
-  String newbuf2 = "Humd:" + String(glb_humidity);
-  String newbuf3 = "Pkts:" + String(glb_dataServerCounter);
+    //tft.fillScreen(WROVER_BLACK);
+    String newbuf1 = "Temp:" + String(glb_temperature);
+    String newbuf2 = "Humd:" + String(glb_humidity);
+    String newbuf3 = "Pkts:" + String(glb_dataServerCounter);
 
-  LCD_DrawText(0, 0, "Temp    :" + String(glb_temperature), WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 10, "Humidity:" + String(glb_humidity), WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 20, "Pkts    :" + String(glb_dataServerCounter), WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 30, "Status  :" + glb_dhtStatusError, WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 40, "Time    :" + glb_TimeShort, WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 50, "Free mem:" + String(ESP.getFreeHeap()), WROVER_WHITE, WROVER_BLACK);
-  LCD_DrawText(0, 60, "IP Addr :" + glb_ipAddress.toString(), WROVER_WHITE, WROVER_BLACK);
+    LCD_DrawText(0, 0, "Temp    :" + String(glb_temperature), textcolor, backgroundcolor);
+    LCD_DrawText(0, 10, "Humidity:" + String(glb_humidity), textcolor, backgroundcolor);
+    LCD_DrawText(0, 20, "Pkts    :" + String(glb_dataServerCounter), textcolor, backgroundcolor);
+    LCD_DrawText(0, 30, "Status  :" + glb_dhtStatusError, textcolor, backgroundcolor);
+    LCD_DrawText(0, 40, "Time    :" + glb_TimeShort, textcolor, backgroundcolor);
+    LCD_DrawText(0, 50, "Free mem:" + String(ESP.getFreeHeap()), textcolor, backgroundcolor);
+    LCD_DrawText(0, 60, "IP Addr :" + glb_ipAddress.toString(), textcolor, backgroundcolor);
 
-  endTimeMicros = micros();
-  endTimeMicros = endTimeMicros - startTimeMicros;
-  glb_TaskTimes[20] = endTimeMicros;
-
+    endTimeMicros = micros();
+    endTimeMicros = endTimeMicros - startTimeMicros;
+    glb_TaskTimes[20] = endTimeMicros;
 }
 //************************************************************************************
 void TelnetServer_Process()
@@ -730,7 +753,7 @@ void FileSystem_DebugDataSave(String data)
 {
 
   Serial.println("ROUTINE_FileSystem_DebugSaveData");
-  
+
   bool debug = 0;
   int startTimeMicros = micros();
   int endTimeMicros = 0;
@@ -833,10 +856,10 @@ void FileSystem_DebugDataSave(String data)
         if (debug)
           Serial.print(F("Debug data time: "));
         if (debug)
-         Serial.println(endTimeMicros);
+          Serial.println(endTimeMicros);
       }
     }
-  } 
+  }
 }
 //************************************************************************************
 void FileSystem_ErrorLogSave(String data)
@@ -851,7 +874,8 @@ void FileSystem_ErrorLogSave(String data)
     Serial.println("  ErrorLogSave - failed to open file for appending");
     return;
   }
-  if (glb_errorLog.println(tmpdata)){
+  if (glb_errorLog.println(tmpdata))
+  {
     Serial.println("  ErrorLogSave - message appended");
   }
   else
@@ -1079,11 +1103,10 @@ void TimeRoutine()
     static time_t now;
     time_t tmpNow;
 
-    if (firstRun) 
-    
+    if (firstRun)
 
-    configTime(-4 * 3600, 0, "pool.ntp.org");
-    
+      configTime(-4 * 3600, 0, "pool.ntp.org");
+
     secondsCounter++;
     now++;
 
@@ -1107,7 +1130,8 @@ void TimeRoutine()
         tmpNow = time(nullptr);
         if (tmpNow != 0)
         {
-          if (firstRun){
+          if (firstRun)
+          {
             Serial.println(F("  First run waiting for time from time sync..."));
             firstRun = false;
             now = tmpNow;
@@ -1329,7 +1353,8 @@ void ErrorCodes_Process()
   int endTimeMicros = 0;
 
   bool debug = 0;
-  if (debug){
+  if (debug)
+  {
     Serial.println("ROUTINE_ErrorCodes_Process");
     Debug.println(F(" Processing Error Codes..."));
   }
@@ -1745,7 +1770,7 @@ void Wifi_CheckStatus()
 void DHT11_TempHumidity()
 {
   Serial.println("ROUTINE_DHT11_TempHumidity");
-  if (glb_DHT11debugOn) 
+  if (glb_DHT11debugOn)
     Debug.println(F(" Processing temperature and humity sensor..."));
   static int err1 = 0;
   static int err2 = 0;
@@ -1756,8 +1781,6 @@ void DHT11_TempHumidity()
   int tmpHumidity = 0;
   String tmpStatus = "";
 
-  tft.setTextColor(WROVER_WHITE);
-  tft.setTextSize(1);
   tmpHumidity = dht.getHumidity();
   tmpTemperature = dht.getTemperature();
   tmpTemperature = dht.toFahrenheit(tmpTemperature);
@@ -2337,17 +2360,29 @@ void WebServer_HandleNotFound()
   webServer.send(404, (F("text/plain")), message);
 }
 //************************************************************************************
+u_int getFreeHeap()
+{
+  Serial.print(F("  Free RAM : "));
+  glb_freeHeap = ESP.getFreeHeap();
+  Serial.println(glb_freeHeap);
+  return glb_freeHeap;
+}
+//************************************************************************************
 void setup()
 {
   //SET UP AS CONTROLLER OR SENSOR
   glb_tempController = true;
   Serial.begin(115200);
   Serial.println("ROUTINE_setup");
+
+#ifdef ESP32_WROVER
+  Serial.println("Board defined as Espressif ESP - WROVER - KIT");
+#endif
+
   Serial.println();
   delay(1000);
-  Serial.print(F("  Free RAM : "));
-  glb_freeHeap = ESP.getFreeHeap();
-  Serial.println(glb_freeHeap);
+  //FileSystem_DeleteFile(glb_errorLogPath);
+  Serial.println(getFreeHeap());
   //FileSystem_Format();
   FileSystem_ErrorLogCreate();
   ThermostatMode_Setup();
@@ -2389,7 +2424,6 @@ void setup()
   StartupPrinting_Setup();
   Tasks_Enable_Setup();
   mDNS_Setup();
-  Serial.println(F(" Starting..."));
 }
 //************************************************************************************
 void ThermostatMode_Setup()
@@ -2459,7 +2493,9 @@ void Modbus_Registers_Create()
 //************************************************************************************
 void LCD_Setup()
 {
-  Serial.println(F("ROUTINE_LCD_Setup"));
+ 
+  #ifdef ESP32_WROVER
+  Serial.println(F("WROVER_LCD_Setup"));
   tft.begin();
   tft.setRotation(2);
   uint8_t x = 0;
@@ -2493,7 +2529,15 @@ void LCD_Setup()
   x = tft.readcommand8(WROVER_RDDSDR);
   Serial.print("Self Diagnostic: 0x");
   Serial.println(x, HEX);
+
+  tft.fillScreen(WROVER_BLACK);
+  #elif ESP32_DEVKIT
+  tft.begin();
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+  #endif
 }
+
 //************************************************************************************
 void StartupPrinting_Setup()
 {
@@ -2505,7 +2549,7 @@ void StartupPrinting_Setup()
   Serial.println(TimestampedVersion);
   Serial.print(F("  Sketch size : "));
   Serial.println();
-    //Serial.println(ESP.getSketchSize());
+  //Serial.println(ESP.getSketchSize());
   Serial.print(F("  Free sketch size : "));
   Serial.println();
   //Serial.println(ESP.getFreeSketchSpace());
@@ -2624,8 +2668,14 @@ bool FileSystem_PrintFile(String filepath, bool debug)
 bool FileSystem_DeleteFile(String pathname)
 {
   Serial.println("ROUTINE_FileSystem_DeleteFile");
+
+  if (SPIFFS.begin(false))
+  {
+    Serial.println(F("  File system already mounted..."));
+  }
+
   bool val = SPIFFS.remove(pathname);
-  Serial.println(val);
+  //Serial.println(val);
   if (pathname == glb_dataLogPath)
     glb_dataLogCount = 0;
 
@@ -2721,10 +2771,15 @@ void I2C_Setup()
 {
   Serial.println(F("ROUTINE_I2C_Setup"));
 
+  #ifdef ESP32_WROVER
   // i2c mode
   // used to override clock and data pins
-  //Wire.begin(I2C_DATA_PIN, I2C_CLOCK_PIN);
+  //mcp.begin(0, I2C_DATA_PIN, I2C_CLOCK_PIN);
+  #elif ESP32_DEVKIT
+  mcp.begin(0, I2C_DATA_PIN, I2C_CLOCK_PIN);
   //mcp.begin(0);
+  Serial.println("here");
+  #endif
 }
 //************************************************************************************
 void EEPROM_Setup()
@@ -2752,7 +2807,7 @@ void IO_Pins_Setup()
   //pinMode(THERMOSTAT_FAN_CALL_PIN, INPUT);
   pinMode(TEST_PIN, OUTPUT);
 
-   //INTERRUPTS
+  //INTERRUPTS
   attachInterrupt(digitalPinToInterrupt(THERMOSTAT_HEAT_CALL_PIN), Interrupt_Detect_AC, RISING);
 }
 //************************************************************************************
@@ -2766,6 +2821,17 @@ void OTA_Setup()
 {
   Serial.println("ROUTINE_OTA_Setup");
 
+  uint16_t textcolor = 0;
+  uint16_t backgroundcolor = 0;
+
+  #ifdef ESP32_WROVER
+    #define TEXTCOLOR WROVER_WHITE
+    #define BACKGROUNDCOLOR WROVER_BLACK
+  #elif ESP32_DEVKIT
+    #define TEXTCOLOR TFT_WHITE
+    #define BACKGROUNDCOLOR TFT_BLACK
+  #endif
+  
   ArduinoOTA.onStart([]() {
     String type;
     glb_OTA_Started = true;
@@ -2792,7 +2858,7 @@ void OTA_Setup()
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
-    LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", WROVER_WHITE, WROVER_BLACK);
+    LCD_DrawText(0, 80, "OTA Update  :     " + String(progress / (total / 100)) + "%", TEXTCOLOR, BACKGROUNDCOLOR);
   });
 
   ArduinoOTA.onError([](ota_error_t error) {
@@ -3022,9 +3088,9 @@ void ChipID_Acquire()
   char glbChipID1[20];
 
   Serial.println("ROUTINE_ChipID_Acquire");
-  chipid = ESP.getEfuseMac();                                      //The chip ID is essentially its MAC address(length: 6 bytes).
+  chipid = ESP.getEfuseMac();                                        //The chip ID is essentially its MAC address(length: 6 bytes).
   Serial.printf("  ESP32 Chip ID = %04X", (uint16_t)(chipid >> 32)); //print High 2 bytes
-  Serial.printf("%08X\n", (uint32_t)chipid);                       //print Low 4bytes.
+  Serial.printf("%08X\n", (uint32_t)chipid);                         //print Low 4bytes.
   //sprintf(glbChipID, "%12X", (uint64_t)(chipid >> 48));
   //sprintf(glbChipID1,"%08X\n", (uint32_t)chipid);
   //Serial.print("string chipid : ");
@@ -3072,7 +3138,7 @@ void TelnetServer_Setup()
 {
   Serial.println(F("ROUTINE_TelnetServer_Setup"));
 
-  Debug.begin("statbasement", 21, 1);                             // Initiaze the telnet server - HOST_NAME is the
+  Debug.begin("statbasement", 23, 1);                         // Initiaze the telnet server - HOST_NAME is the
                                                               //used in MDNS.begin and set the initial Serial level
   Debug.setSerialEnabled(false);                              // All messages too send to serial too, and can be see
   Debug.setResetCmdEnabled(true);                             // Setup after Serial.begin
@@ -3108,7 +3174,7 @@ void FileSystem_ErrorLogCreate()
 {
   Serial.println("ROUTINE_FileSystem_ErrorLog_Create");
   bool debug = 1;
-  
+
   if (debug)
     Serial.println(F("  Creating ErrorLog..."));
 
