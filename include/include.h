@@ -16,153 +16,151 @@
 //dht defines
 #define DHTTYPE DHT11 // DHT 11
 
-String errorCodes[12] = {"0", "WIFI NO SSID AVAIL", "WIFI SCAN COMPLETED", "WIFI CONNECTED",
-                         "WIFI CONNECT FAILED", "WIFI CONNECTION_LOST", "WIFI DISCONNECTED", "DHT TIMEOUT", "DHT CHECKSUM",
-                         "TSTAT DETECT ERR", "WIFI IDLE STATUS"};
+extern String errorCodes[12];
 
 //eeprom settings memory location
-extern const int ES_SSID PROGMEM PROGMEM = 0;  //size of 32
-extern const int ES_SSIDPASSWORD PROGMEM = 32; //SIZE OF 32
-extern const int ES_RESETCOUNTER PROGMEM = 65; //SIZE OF 32
-extern const int ES_SSID_MD5 PROGMEM = 98;
-extern const int ES_SSIDPASS_MD5 PROGMEM = 102;
+extern const int ES_SSID PROGMEM PROGMEM;// = 0;  //size of 32
+extern const int ES_SSIDPASSWORD PROGMEM;      // = 32; //SIZE OF 32
+extern const int ES_RESETCOUNTER PROGMEM;      // = 65; //SIZE OF 32
+extern const int ES_SSID_MD5 PROGMEM;          // = 98;
+extern const int ES_SSIDPASS_MD5 PROGMEM;      // = 102;
 
 //Modbus Registers Offsets (0-9999)
-extern const int ANALOG_SENSOR_MB_HREG PROGMEM = 1;
-extern const int TEMPERATURE_SENSOR_MB_HREG PROGMEM = 2;
-extern const int HUMIDITY_SENSOR_MB_HREG PROGMEM = 3;
-extern const int THERMOSTAT_HEAT_CALL_PULSE_VALUE_MB_HREG PROGMEM = 4;
-extern const int THERMOSTAT_COOL_CALL_PULSE_VALUE_MB_HREG PROGMEM = 5;
-extern const int THERMOSTAT_FAN_CALL_PULSE_VALUE_MB_HREG PROGMEM = 6;
-extern const int DHT_STATUS_ERR_TIMEOUT_COUNTER_MB_HREG PROGMEM = 100;
-extern const int DHT_STATUS_ERR_CHECKSUM_COUNTER_MB_HREG PROGMEM = 101;
-extern const int DHT_STATUS_ERR_MB_HREG PROGMEM = 102;
-extern const int BLINK_ERROR_CODE_MB_HREG PROGMEM = 103;
-extern const int WIFI_STATUS_ERR_MB_HREG PROGMEM = 104;
-extern const int THERMOSTAT_STATUS_ERR_MB_HREG PROGMEM = 105;
-extern const int ESP_RESET_REASON_MB_HREG PROGMEM = 106;
-extern const int ESP_CHIP_ID_HIGH_MB_HREG PROGMEM = 107;
-extern const int ESP_CHIP_ID_LOW_MB_HREG PROGMEM = 108;
-extern const int ESP_MEMORY_MB_HREG PROGMEM = 109;
-extern const int WIFI_NOT_CONNECTED_MB_HREG PROGMEM = 110;
-extern const int DHT_ROUTINE_TIME_MB_HREG PROGMEM = 111;
-extern const int TIME_HH_MB_HREG PROGMEM = 112;
-extern const int TIME_MM_MB_HREG PROGMEM = 113;
-extern const int TIME_SS_MB_HREG PROGMEM = 114;
-extern const int GOOD_PACKET_COUNTER_MB_REG PROGMEM = 115;
-extern const int BAD_PACKET_COUNTER_MB_REG PROGMEM = 116;
-extern const int MB_ROUTINE_TIME_MB_HREG PROGMEM = 117;
-extern const int PROCESS_MODBUS_TIME_MB_HREG PROGMEM = 118;
-extern const int THERM_DETECT_ROUTINE_TIME_MB_HREG PROGMEM = 119;
-extern const int SCREEN_TIME_MB_HREG PROGMEM = 120;
-extern const int ESP_BOOT_DEVICE_MB_HREG PROGMEM = 121;
-extern const int ESP_RESET_COUNTER_MB_HREG PROGMEM = 122;
-extern const int MB_START_DELAY_COUNTER_MB_REG PROGMEM = 123;
-extern const int MB_OVERRUN_NEG_COUNTER_MB_REG PROGMEM = 124;
-extern const int MB_OVERRUN_POS_COUNTER_MB_REG PROGMEM = 125;
-extern const int NO_CLIENT_COUNTER_MB_REG PROGMEM = 126;
-extern const int NOT_MODBUS_PACKET_COUNTER_MB_REG PROGMEM = 127;
-extern const int LARGE_FRAME_COUNTER_MB_REG PROGMEM = 128;
-extern const int FAILED_WRITE_COUNTER_MB_REG PROGMEM = 129;
-extern const int NTP_LOOP_TIME_MB_HREG PROGMEM = 130;
-extern const int ESP_MEMORY_LOW_POINT PROGMEM = 131;
+extern const int ANALOG_SENSOR_MB_HREG PROGMEM; // = 1;
+extern const int TEMPERATURE_SENSOR_MB_HREG PROGMEM; // = 2;
+extern const int HUMIDITY_SENSOR_MB_HREG PROGMEM;    // = 3;
+extern const int THERMOSTAT_HEAT_CALL_PULSE_VALUE_MB_HREG PROGMEM; // = 4;
+extern const int THERMOSTAT_COOL_CALL_PULSE_VALUE_MB_HREG PROGMEM; // = 5;
+extern const int THERMOSTAT_FAN_CALL_PULSE_VALUE_MB_HREG PROGMEM;  // = 6;
+extern const int DHT_STATUS_ERR_TIMEOUT_COUNTER_MB_HREG PROGMEM;   // = 100;
+extern const int DHT_STATUS_ERR_CHECKSUM_COUNTER_MB_HREG PROGMEM;// = 101;
+extern const int DHT_STATUS_ERR_MB_HREG PROGMEM;                 //= 102;
+extern const int BLINK_ERROR_CODE_MB_HREG PROGMEM;               // = 103;
+extern const int WIFI_STATUS_ERR_MB_HREG PROGMEM;                // = 104;
+extern const int THERMOSTAT_STATUS_ERR_MB_HREG PROGMEM;          //= 105;
+extern const int ESP_RESET_REASON_MB_HREG PROGMEM;               //= 106;
+extern const int ESP_CHIP_ID_HIGH_MB_HREG PROGMEM;// = 107;
+extern const int ESP_CHIP_ID_LOW_MB_HREG PROGMEM; // = 108;
+extern const int ESP_MEMORY_MB_HREG PROGMEM;      // = 109;
+extern const int WIFI_NOT_CONNECTED_MB_HREG PROGMEM; //= 110;
+extern const int DHT_ROUTINE_TIME_MB_HREG PROGMEM;   //= 111;
+extern const int TIME_HH_MB_HREG PROGMEM;            //= 112;
+extern const int TIME_MM_MB_HREG PROGMEM ;//= 113;
+extern const int TIME_SS_MB_HREG PROGMEM; //= 114;
+extern const int GOOD_PACKET_COUNTER_MB_REG PROGMEM; //= 115;
+extern const int BAD_PACKET_COUNTER_MB_REG PROGMEM;  //= 116;
+extern const int MB_ROUTINE_TIME_MB_HREG PROGMEM;    //= 117;
+extern const int PROCESS_MODBUS_TIME_MB_HREG PROGMEM; //= 118;
+extern const int THERM_DETECT_ROUTINE_TIME_MB_HREG PROGMEM; //= 119;
+extern const int SCREEN_TIME_MB_HREG PROGMEM;               //= 120;
+extern const int ESP_BOOT_DEVICE_MB_HREG PROGMEM;           // =;// 121;
+extern const int ESP_RESET_COUNTER_MB_HREG PROGMEM ;//= 122;
+extern const int MB_START_DELAY_COUNTER_MB_REG PROGMEM; //= 123;
+extern const int MB_OVERRUN_NEG_COUNTER_MB_REG PROGMEM; //= 124;
+extern const int MB_OVERRUN_POS_COUNTER_MB_REG PROGMEM; //= 125;
+extern const int NO_CLIENT_COUNTER_MB_REG PROGMEM;      //= 126;
+extern const int NOT_MODBUS_PACKET_COUNTER_MB_REG PROGMEM; //= 127;
+extern const int LARGE_FRAME_COUNTER_MB_REG PROGMEM;       // = 128;
+extern const int FAILED_WRITE_COUNTER_MB_REG PROGMEM ;//= 129;
+extern const int NTP_LOOP_TIME_MB_HREG PROGMEM;// = 130;
+extern const int ESP_MEMORY_LOW_POINT PROGMEM; //= 131;
 
 //modbus COILS
-const int HEAT_OVERRIDE_MB_COIL PROGMEM = 1;
-const int HEAT_CONTROL_MB_COIL PROGMEM = 2;
-const int COOL_OVERRIDE_MB_COIL PROGMEM = 3;
-const int COOL_CONTROL_MB_COIL PROGMEM = 4;
-const int FAN_OVERRIDE_MB_COIL PROGMEM = 5;
-const int FAN_CONTROL_MB_COIL PROGMEM = 6;
-const int THERMOSTAT_HEAT_CALL_MB_COIL PROGMEM = 7;
-const int THERMOSTAT_COOL_CALL_MB_COIL PROGMEM = 8;
-const int THERMOSTAT_FAN_CALL_MB_COIL PROGMEM = 9;
-const int THERMOSTAT_STATUS_MB_COIL PROGMEM = 10;
-const int ESP_RESTART_MB_COIL PROGMEM = 11;
-const int ESP_CLEAR_SAVECRASH_DATA PROGMEM = 12;
+extern const int HEAT_OVERRIDE_MB_COIL PROGMEM ;//= 1;
+extern const int HEAT_CONTROL_MB_COIL PROGMEM ;//= 2;
+extern const int COOL_OVERRIDE_MB_COIL PROGMEM ;//= 3;
+extern const int COOL_CONTROL_MB_COIL PROGMEM ;//= 4;
+extern const int FAN_OVERRIDE_MB_COIL PROGMEM ;//= 5;
+extern const int FAN_CONTROL_MB_COIL PROGMEM;  //= 6;
+extern const int THERMOSTAT_HEAT_CALL_MB_COIL PROGMEM; //= 7;
+extern const int THERMOSTAT_COOL_CALL_MB_COIL PROGMEM; //= 8;
+extern const int THERMOSTAT_FAN_CALL_MB_COIL PROGMEM;  // = 9;
+extern const int THERMOSTAT_STATUS_MB_COIL PROGMEM;    //= 10;
+extern const int ESP_RESTART_MB_COIL PROGMEM;// = 11;
+extern const int ESP_CLEAR_SAVECRASH_DATA PROGMEM; // = 12;
 
 //pin mappping to io expander
-const int HEAT_OVERRIDE_PIN PROGMEM = 0;
-const int HEAT_CONTROL_PIN PROGMEM = 1;
-const int COOL_OVERRIDE_PIN PROGMEM = 2;
-const int COOL_CONTROL_PIN PROGMEM = 3;
-const int FAN_OVERRIDE_PIN PROGMEM = 4;
-const int FAN_CONTROL_PIN PROGMEM = 5;
-const int LED PROGMEM = 7;
+extern const int HEAT_OVERRIDE_PIN PROGMEM; // = 0;
+extern const int HEAT_CONTROL_PIN PROGMEM;  //= 1;
+extern const int COOL_OVERRIDE_PIN PROGMEM ;//= 2;
+extern const int COOL_CONTROL_PIN PROGMEM ;//= 3;
+extern const int FAN_OVERRIDE_PIN PROGMEM ;//= 4;
+extern const int FAN_CONTROL_PIN PROGMEM;// = 5;
+extern const int LED PROGMEM;            //= 7;
 
 //misc variables
 
 //GLOBAL variables
 
-extern bool glb_coolcall = false;
-extern bool glb_DHT11debugOn = 1;
-extern bool glb_fancall = false;
-extern bool glb_heatcall = false;
-extern bool glb_logDataDebug = false;
-extern bool glb_OTA_Started = false;
-extern bool glb_tempController = false;
-extern bool glb_tstatDebugOn = false;
+extern bool glb_coolcall; // = false;
+extern bool glb_DHT11debugOn; // = 1;
+extern bool glb_fancall;      // = false;
+extern bool glb_heatcall;     //= false;
+extern bool glb_logDataDebug; //= false;
+extern bool glb_OTA_Started;  //= false;
+extern bool glb_tempController ;//= false;
+extern bool glb_tstatDebugOn;   // = false;
 extern char glb_lcdTime[20];
 extern char glb_SSID[32];
 extern char glb_SSIDpassword[32];
-extern const bool COIL_OFF PROGMEM = false;
-extern const bool COIL_ON PROGMEM = true;
-extern const char *glb_mdnsName = "HOMESTAT";
-extern const char *mqtt_server = "10.0.0.26";
-extern const unsigned int ts_coolcall = 5; // Field to write elapsed time data
-extern const unsigned int ts_fancall = 6;  // Field to write elapsed time data
-extern const unsigned int ts_heatcall = 4; // Field to write elapsed time data
-extern const unsigned int ts_humidity = 2; // Field to write temperature data
-extern const unsigned int ts_lightsensor = 3; // Field to write elapsed time data
-extern const unsigned int ts_temperature = 1; // Field to write temperature data
-extern const word glb_maxCoilSize PROGMEM = 256;
-extern const word glb_maxHregSize PROGMEM = 256;
+extern const bool COIL_OFF PROGMEM; // = false;
+extern const bool COIL_ON PROGMEM;  //= true;
+extern const char *glb_mdnsName;    //= "HOMESTAT";
+extern const char *mqtt_server;     // = "10.0.0.26";
+extern const unsigned int ts_coolcall;     // = 5; // Field to write elapsed time data
+extern const unsigned int ts_fancall;      // = 6;  // Field to write elapsed time data
+extern const unsigned int ts_heatcall;     //= 4; // Field to write elapsed time data
+extern const unsigned int ts_humidity;     //= 2; // Field to write temperature data
+extern const unsigned int ts_lightsensor;  // = 3; // Field to write elapsed time data
+extern const unsigned int ts_temperature;// = 1; // Field to write temperature data
+extern const word glb_maxCoilSize PROGMEM ;//= 256;
+extern const word glb_maxHregSize PROGMEM; // = 256;
 extern File fsUploadFile;
 extern File glb_errorLog;
 extern File glb_temperatureLog;
-extern float glb_VCC = 0.0;
-extern int glb_dataLogCount = 0;
-extern int glb_dataServerCounter = 0;
-extern int glb_heatRunTimeTotal = 0;
-extern int glb_humidity = 0;
-extern int glb_lightSensor = 0;
-extern int glb_lowMemory = 80000;
+extern float glb_VCC; // = 0.0;
+extern int glb_dataLogCount; // = 0;
+extern int glb_dataServerCounter; // = 0;
+extern int glb_heatRunTimeTotal;  // = 0;
+extern int glb_humidity;// = 0;
+extern int glb_lightSensor; // = 0;
+extern int glb_lowMemory;   // = 80000;
 extern int glb_TaskTimes[30];
-extern int glb_temperature = 0;
+extern int glb_temperature;     // = 0;
 extern IPAddress glb_ipAddress; //ip address
-extern long glb_wifiRSSI = 0;
-extern String glb_BootTime = "";
-extern String glb_dataLogPath = "/datalog.csv";
-extern String glb_debugLogPath = "/debuglog.txt";
-extern String glb_dhtStatusError = "";
-extern String glb_errorLogPath = "/errorlog.txt";
-extern String glb_systemLogPath = "/systemlog.txt";
-extern String glb_testLED = "";
-extern String glb_thermostatStatus = "";
-extern String glb_timeDay = "";
-extern String glb_timeHour = "";
-extern String glb_TimeLong = "";
-extern String glb_timeMin = "";
-extern String glb_timeMonth = "";
-extern String glb_timeSec = "";
-extern String glb_TimeShort = "";
-extern String glb_timeWeekDay = "";
-extern String glb_timeYear = "";
-extern uint32_t glb_freeHeap = 0;
-extern uint32_t glb_resetCounter = 0;
+extern long glb_wifiRSSI;// = 0;
+extern String glb_BootTime;// = "";
+extern String glb_dataLogPath;// = "/datalog.csv";
+extern String glb_debugLogPath; // = "/debuglog.txt";
+extern String glb_dhtStatusError; // = "";
+extern String glb_errorLogPath;// = "/errorlog.txt";
+extern String glb_systemLogPath; // = "/systemlog.txt";
+extern String glb_testLED;       // = "";
+extern String glb_thermostatStatus; // = "";
+extern String glb_timeDay; // = "";
+extern String glb_timeHour;// = "";
+extern String glb_TimeLong ;//= "";
+extern String glb_timeMin;  //= "";
+extern String glb_timeMonth; //= "";
+extern String glb_timeSec;   // = "";
+extern String glb_TimeShort; // = "";
+extern String glb_timeWeekDay; // = "";
+extern String glb_timeYear ;//= "";
+extern uint32_t glb_freeHeap ;//= 0;
+extern uint32_t glb_resetCounter; //= 0;
 extern uint64_t chipid;
-extern volatile word glb_coolPulseCounter = 0;
-extern volatile word glb_coolPulseDuration = 0;
-extern volatile word glb_fanPulseCounter = 0;
-extern volatile word glb_fanPulseDuration = 0;
-extern volatile word glb_heatPulseCounter = 0;
-extern volatile word glb_heatPulseDuration = 0;
-extern word glb_BlinkErrorCode = 1;
-extern word glb_eepromHregCopy[glb_maxHregSize] = {};
-extern word glb_errorDHT = 0;
-extern word glb_errorThermostat = 0;
-extern word glb_wifiNotConnectedCounter = 0;
-extern word glb_WiFiStatus = 0;
+extern volatile word glb_coolPulseCounter; //= 0;
+extern volatile word glb_coolPulseDuration; // = 0;
+extern volatile word glb_fanPulseCounter;// = 0;
+extern volatile word glb_fanPulseDuration; // = 0;
+extern volatile word glb_heatPulseCounter;// = 0;
+extern volatile word glb_heatPulseDuration; // = 0;
+extern word glb_BlinkErrorCode;
+extern word glb_eepromHregCopy[100]; // = {};
+extern word glb_errorDHT;                        // = 0;
+extern word glb_errorThermostat;                 // = 0;
+extern word glb_wifiNotConnectedCounter;         // = 0;
+extern word glb_WiFiStatus;                      //= 0;
 
 //function declarations
 

@@ -68,6 +68,154 @@ WiFiManager wifiManager;                  //wifi manager
 WiFiClient espClient;                     // wifi client for use withMQTT
 PubSubClient MQTT_Client(espClient);      // MQTT client
 
+String errorCodes[12] = {"0", "WIFI NO SSID AVAIL", "WIFI SCAN COMPLETED", "WIFI CONNECTED",
+                         "WIFI CONNECT FAILED", "WIFI CONNECTION_LOST", "WIFI DISCONNECTED", "DHT TIMEOUT", "DHT CHECKSUM",
+                         "TSTAT DETECT ERR", "WIFI IDLE STATUS"};
+
+//eeprom settings memory location
+ const int ES_SSID PROGMEM PROGMEM = 32;
+ const int ES_SSIDPASSWORD PROGMEM = 32; //SIZE OF 32
+ const int ES_RESETCOUNTER PROGMEM = 65; //SIZE OF 32
+ const int ES_SSID_MD5 PROGMEM = 98;
+ const int ES_SSIDPASS_MD5 PROGMEM = 102;
+
+//Modbus Registers Offsets (0-9999)
+ const int ANALOG_SENSOR_MB_HREG PROGMEM = 1;
+ const int TEMPERATURE_SENSOR_MB_HREG PROGMEM = 2;
+ const int HUMIDITY_SENSOR_MB_HREG PROGMEM = 3;
+ const int THERMOSTAT_HEAT_CALL_PULSE_VALUE_MB_HREG PROGMEM = 4;
+ const int THERMOSTAT_COOL_CALL_PULSE_VALUE_MB_HREG PROGMEM= 5;
+ const int THERMOSTAT_FAN_CALL_PULSE_VALUE_MB_HREG PROGMEM = 6;
+ const int DHT_STATUS_ERR_TIMEOUT_COUNTER_MB_HREG PROGMEM = 100;
+ const int DHT_STATUS_ERR_CHECKSUM_COUNTER_MB_HREG PROGMEM = 101;
+ const int DHT_STATUS_ERR_MB_HREG PROGMEM= 102;
+ const int BLINK_ERROR_CODE_MB_HREG PROGMEM = 103;
+ const int WIFI_STATUS_ERR_MB_HREG PROGMEM = 104;
+ const int THERMOSTAT_STATUS_ERR_MB_HREG PROGMEM = 105;
+ const int ESP_RESET_REASON_MB_HREG PROGMEM= 106;
+ const int ESP_CHIP_ID_HIGH_MB_HREG PROGMEM = 107;
+ const int ESP_CHIP_ID_LOW_MB_HREG PROGMEM = 108;
+ const int ESP_MEMORY_MB_HREG PROGMEM = 109;
+ const int WIFI_NOT_CONNECTED_MB_HREG PROGMEM= 110;
+ const int DHT_ROUTINE_TIME_MB_HREG PROGMEM= 111;
+ const int TIME_HH_MB_HREG PROGMEM= 112;
+ const int TIME_MM_MB_HREG PROGMEM= 113;
+ const int TIME_SS_MB_HREG PROGMEM= 114;
+ const int GOOD_PACKET_COUNTER_MB_REG PROGMEM= 115;
+ const int BAD_PACKET_COUNTER_MB_REG PROGMEM= 116;
+ const int MB_ROUTINE_TIME_MB_HREG PROGMEM= 117;
+ const int PROCESS_MODBUS_TIME_MB_HREG PROGMEM= 118;
+ const int THERM_DETECT_ROUTINE_TIME_MB_HREG PROGMEM= 119;
+ const int SCREEN_TIME_MB_HREG PROGMEM= 120;
+ const int ESP_BOOT_DEVICE_MB_HREG PROGMEM= 121;
+ const int ESP_RESET_COUNTER_MB_HREG PROGMEM= 122;
+ const int MB_START_DELAY_COUNTER_MB_REG PROGMEM= 123;
+ const int MB_OVERRUN_NEG_COUNTER_MB_REG PROGMEM= 124;
+ const int MB_OVERRUN_POS_COUNTER_MB_REG PROGMEM= 125;
+ const int NO_CLIENT_COUNTER_MB_REG PROGMEM= 126;
+ const int NOT_MODBUS_PACKET_COUNTER_MB_REG PROGMEM= 127;
+ const int LARGE_FRAME_COUNTER_MB_REG PROGMEM = 128;
+ const int FAILED_WRITE_COUNTER_MB_REG PROGMEM= 129;
+ const int NTP_LOOP_TIME_MB_HREG PROGMEM = 130;
+ const int ESP_MEMORY_LOW_POINT PROGMEM= 131;
+
+//modbus COILS
+ const int HEAT_OVERRIDE_MB_COIL PROGMEM= 1;
+ const int HEAT_CONTROL_MB_COIL PROGMEM= 2;
+ const int COOL_OVERRIDE_MB_COIL PROGMEM= 3;
+ const int COOL_CONTROL_MB_COIL PROGMEM= 4;
+ const int FAN_OVERRIDE_MB_COIL PROGMEM= 5;
+ const int FAN_CONTROL_MB_COIL PROGMEM= 6;
+ const int THERMOSTAT_HEAT_CALL_MB_COIL PROGMEM= 7;
+ const int THERMOSTAT_COOL_CALL_MB_COIL PROGMEM= 8;
+ const int THERMOSTAT_FAN_CALL_MB_COIL PROGMEM= 9;
+ const int THERMOSTAT_STATUS_MB_COIL PROGMEM= 10;
+ const int ESP_RESTART_MB_COIL PROGMEM = 11;
+ const int ESP_CLEAR_SAVECRASH_DATA PROGMEM = 12;
+
+//pin mappping to io expander
+ const int HEAT_OVERRIDE_PIN PROGMEM = 0;
+ const int HEAT_CONTROL_PIN PROGMEM= 1;
+ const int COOL_OVERRIDE_PIN PROGMEM= 2;
+ const int COOL_CONTROL_PIN PROGMEM= 3;
+ const int FAN_OVERRIDE_PIN PROGMEM= 4;
+ const int FAN_CONTROL_PIN PROGMEM= 5;
+ const int LED PROGMEM= 7;
+
+//misc variables
+
+//GLOBAL variables
+
+ bool glb_coolcall = false;
+ bool glb_DHT11debugOn = 1;
+ bool glb_fancall = false;
+ bool glb_heatcall= false;
+ bool glb_logDataDebug = false;
+ bool glb_OTA_Started= false;
+ bool glb_tempController= false;
+ bool glb_tstatDebugOn = false;
+ char glb_lcdTime[20];
+ char glb_SSID[32];
+ char glb_SSIDpassword[32];
+ const bool COIL_OFF PROGMEM = false;        // = false;
+ const bool COIL_ON PROGMEM = true;         //= true;
+ const char *glb_mdnsName = "HOMESTAT";
+ const char *mqtt_server = "10.0.0.26";
+ const unsigned int ts_coolcall= 5; // Field to write elapsed time data
+ const unsigned int ts_fancall = 6;  // Field to write elapsed time data
+ const unsigned int ts_heatcall= 4; // Field to write elapsed time data
+ const unsigned int ts_humidity= 2; // Field to write temperature data
+ const unsigned int ts_lightsensor = 3; // Field to write elapsed time data
+ const unsigned int ts_temperature = 1; // Field to write temperature data
+ const word glb_maxCoilSize PROGMEM= 256;
+ const word glb_maxHregSize PROGMEM = 256;
+ File fsUploadFile;
+ File glb_errorLog;
+ File glb_temperatureLog;
+ float glb_VCC = 0.0;
+ int glb_dataLogCount = 0;
+ int glb_dataServerCounter= 0;
+ int glb_heatRunTimeTotal = 0;
+ int glb_humidity = 0;
+ int glb_lightSensor = 0;
+ int glb_lowMemory = 80000;
+ int glb_TaskTimes[30] = {};
+ int glb_temperature= 0;
+ IPAddress glb_ipAddress;     //ip address
+ long glb_wifiRSSI = 0;
+ String glb_BootTime = "";
+ String glb_dataLogPath = "/datalog.csv";
+ String glb_debugLogPath = "/debuglog.txt";
+ String glb_dhtStatusError= "";
+ String glb_errorLogPath = "/errorlog.txt";
+ String glb_systemLogPath = "/systemlog.txt";
+ String glb_testLED = "";
+ String glb_thermostatStatus = "";
+ String glb_timeDay = "";
+ String glb_timeHour = "";
+ String glb_TimeLong= "";
+ String glb_timeMin= "";
+ String glb_timeMonth= "";
+ String glb_timeSec = "";
+ String glb_TimeShort = "";
+ String glb_timeWeekDay = "";
+ String glb_timeYear= "";
+ uint32_t glb_freeHeap= 0;
+ uint32_t glb_resetCounter= 0;
+ uint64_t chipid;
+ volatile word glb_coolPulseCounter= 0;
+ volatile word glb_coolPulseDuration = 0;
+ volatile word glb_fanPulseCounter = 0;
+ volatile word glb_fanPulseDuration = 0;
+ volatile word glb_heatPulseCounter = 0;
+ volatile word glb_heatPulseDuration = 0;
+ word glb_BlinkErrorCode = 1;
+ word glb_eepromHregCopy[100] = {};
+ word glb_errorDHT = 0;
+ word glb_errorThermostat = 0;
+ word glb_wifiNotConnectedCounter = 0;
+ word glb_WiFiStatus= 0;
+
 Task taskModbusReadData_1(30, TASK_FOREVER, &Modbus_ReadData, NULL);
 Task taskDHT11Temp_2(2000, TASK_FOREVER, &DHT11_TempHumidity, NULL);
 Task taskTimeRoutine_3(1000, TASK_FOREVER, &TimeRoutine, NULL);
